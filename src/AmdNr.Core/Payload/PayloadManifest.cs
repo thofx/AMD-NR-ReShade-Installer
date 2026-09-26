@@ -222,6 +222,27 @@ public sealed class PayloadManifest
         };
     }
 
+    /// <summary>This manifest with the mochizuki runtime and its model, for the ReShade routes. The
+    /// add-on (v0.6.8 on) drives the same MochizukiNrRuntime.dll OptiScaler does, so it takes the build
+    /// the newest OptiScaler release carries: the payload lists mochizuki only inside those releases,
+    /// where apps from before this one never look. Unchanged when it is already here or nowhere.</summary>
+    public PayloadManifest WithMochizuki()
+    {
+        if (Has(MochizukiComponent) && Has(MochizukiModelComponent)) return this;
+        var carrier = Offered(OptiScalerComponent).FirstOrDefault(r =>
+            r.Components.ContainsKey(MochizukiComponent) && r.Components.ContainsKey(MochizukiModelComponent));
+        if (carrier is null) return this;
+        return With(new ComponentRelease
+        {
+            Version = carrier.Version,
+            Components = new Dictionary<string, PayloadComponent>(StringComparer.Ordinal)
+            {
+                [MochizukiComponent] = carrier.Components[MochizukiComponent],
+                [MochizukiModelComponent] = carrier.Components[MochizukiModelComponent],
+            },
+        });
+    }
+
     /// <summary>This manifest at the newest version of a component: what an install gets when
     /// nobody picked a version, and what "out of date" is measured against.</summary>
     public PayloadManifest Newest(string component) =>

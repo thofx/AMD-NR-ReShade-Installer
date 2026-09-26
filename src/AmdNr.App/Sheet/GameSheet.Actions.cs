@@ -341,13 +341,15 @@ public partial class GameSheet
     private static string[] ComponentsFor(Preset preset, bool mochizuki = false) =>
         preset.IsOptiScaler()
             ? [PayloadManifest.OptiScalerComponent, PayloadManifest.OptiRuntimeComponent, PayloadManifest.RuntimeComponent,
-               PayloadManifest.LmxxfWeightsComponent,
-               .. (mochizuki ? new[] { PayloadManifest.MochizukiComponent, PayloadManifest.MochizukiModelComponent } : [])]
+               PayloadManifest.LmxxfWeightsComponent, .. Mochizuki(mochizuki)]
             : preset.Route() == Route.X86
                 ? [PayloadManifest.BridgeComponent, PayloadManifest.X86ExtrasComponent,
-                   PayloadManifest.RuntimeComponent, PayloadManifest.ShaderComponent]
+                   PayloadManifest.RuntimeComponent, PayloadManifest.ShaderComponent, .. Mochizuki(mochizuki)]
                 : [PayloadManifest.AddonComponent, PayloadManifest.RuntimeComponent,
-                   PayloadManifest.ReShadeComponent, PayloadManifest.ShaderComponent];
+                   PayloadManifest.ReShadeComponent, PayloadManifest.ShaderComponent, .. Mochizuki(mochizuki)];
+
+    private static string[] Mochizuki(bool wanted) =>
+        wanted ? [PayloadManifest.MochizukiComponent, PayloadManifest.MochizukiModelComponent] : [];
 
     /// <summary>The folder a route would install from, when it is already complete in the cache.</summary>
     private string? CachedPayloadFolder(Preset preset, bool mochizuki)
@@ -368,12 +370,13 @@ public partial class GameSheet
 
     /// <summary>The manifest this sheet installs from: the published one, with the chosen release's
     /// add-on swapped in when that is not the version the manifest already pins, or the chosen
-    /// OptiScaler version's components in place of the ones it pins.</summary>
+    /// OptiScaler version's components in place of the ones it pins. The ReShade routes also carry
+    /// the mochizuki build the newest OptiScaler release has (PayloadManifest.WithMochizuki).</summary>
     private PayloadManifest? Selected() =>
         Session.Manifest is not { } manifest ? null
         : _version?.Opti is { } opti ? manifest.With(opti)
-        : _version?.Release is { } release ? AddonReleases.With(manifest, release)
-        : manifest;
+        : _card?.Entry.Preset.IsOptiScaler() == true ? manifest
+        : (_version?.Release is { } release ? AddonReleases.With(manifest, release) : manifest).WithMochizuki();
 
     private PayloadPins Pins()
     {

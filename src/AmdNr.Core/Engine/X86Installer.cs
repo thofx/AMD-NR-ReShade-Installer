@@ -147,12 +147,16 @@ public sealed class X86Installer(string release)
         return p;
     }
 
-    public void Install(string target, string preset, string? proxyName = null)
+    /// <param name="extra">Files the route adds beside the bridge (the mochizuki runtime), already verified.</param>
+    /// <param name="retire">Recorded names the route no longer wants here: see Transaction.Apply.</param>
+    public void Install(string target, string preset, string? proxyName = null,
+        IReadOnlyDictionary<string, byte[]>? extra = null, IEnumerable<string>? retire = null)
     {
         var dir = Engine.InstallDirectory(target);
         Engine.SafePath(dir);
         var desired = Plan(Engine.Absolute(target), preset, proxyName);
-        Transaction.Apply(dir, preset, Route.X86, desired, Log);
+        foreach (var (name, bytes) in extra ?? new Dictionary<string, byte[]>()) desired[name] = bytes;
+        Transaction.Apply(dir, preset, Route.X86, desired, Log, retire);
         // The same sweep the x64 route has done since the rename, and this route needs it more:
         // a 32-bit folder set up before v0.6.5 still has dlss5-neural.addon32 in it, ReShade loads
         // every .addon32 it finds, and two add-ons on one present is two overlays and two helpers.

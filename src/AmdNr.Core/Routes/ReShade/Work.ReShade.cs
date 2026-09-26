@@ -7,7 +7,7 @@ namespace AmdNr.Core;
 public static partial class Work
 {
     private static Report PreflightReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy)
+        string? proxy, bool mochizuki)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -66,6 +66,7 @@ public static partial class Work
             }
             if (allThere) report.Ok("Every payload is there and the right size. Installing verifies the SHA-256 too.");
         }
+        if (mochizuki) CheckMochizukiPayload(src, pins, report);
 
         // --- the target -------------------------------------------------------------------------
         if (dir.Length == 0)
@@ -88,8 +89,11 @@ public static partial class Work
 
         // Anything already there and held open will fail the copy, so name the files rather than let
         // the copy come back with "access denied" halfway through.
+        var route = preset.Route() == Route.X86 ? Route.X86 : Route.X64;
+        var retiring = !mochizuki && MochizukiRecorded(InstalledManifest(dir, route)).Count > 0;
         var held = new[] { AddonName, RuntimeName, WeightsName }
-            .Where(n => Engine.IsLocked(Path.Combine(dir, n))).ToList();
+            .Where(n => Engine.IsLocked(Path.Combine(dir, n)))
+            .Concat(mochizuki || retiring ? MochizukiHeld(dir) : []).ToList();
         if (held.Count > 0)
         {
             report.Err(
@@ -108,6 +112,7 @@ public static partial class Work
         {
             if (Engine.SizeOf(Path.Combine(dir, name)) != size) need += size;
         }
+        if (mochizuki && src.Length > 0) need += MochizukiNeed(src, dir, pins);
         if (Engine.FreeBytes(dir) is { } free && need > 0 && free < need)
         {
             report.Err(
@@ -133,6 +138,7 @@ public static partial class Work
         CheckDoubleReShade(dir, preset, report, ProxyNameFor(preset, dir, proxy), shipped);
 
         CheckDisabledAddons(dir, report);
+        if (retiring) report.Info(MochizukiComesOut);
 
         var dead = DeadFiles().Where(n => File.Exists(Path.Combine(dir, n))).ToList();
         if (dead.Count > 0)
@@ -147,7 +153,7 @@ public static partial class Work
     }
 
     private static Report InstallReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy)
+        string? proxy, bool mochizuki)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -222,6 +228,12 @@ public static partial class Work
             report.Info($"ReShade 6.8.0 with full add-on support goes in as {proxyName}.");
         }
 
+        if (mochizuki)
+        {
+            if (pins.MochizukiFiles.Count == 0) report.Err(NoMochizuki);
+            else AddMochizuki(files, src, pins, report);
+        }
+
         // A refused payload stops the whole install rather than leaving the add-on behind on its own.
         // The transaction is all-or-nothing, which is the point of routing through the engine.
         if (report.Failed)
@@ -230,10 +242,13 @@ public static partial class Work
             return report;
         }
 
+        // What an earlier install put in of mochizuki and this one does not write again comes out in
+        // the same transaction, as on the OptiScaler route.
+        var recorded = MochizukiRecorded(InstalledManifest(dir));
         var log = new List<string>();
         try
         {
-            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log);
+            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log, recorded);
             foreach (var line in log) Narrate(line, report);
         }
         catch (InstallException e)
@@ -246,6 +261,8 @@ public static partial class Work
         if (SweepDead(dir, report.Warn) is { Count: > 0 } swept)
             report.Ok($"removed {swept.Count} file(s) an older install left behind: {string.Join(", ", swept)}");
 
+        if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInAddon);
+        else if (recorded.Count > 0) AfterMochizukiRetired(dir, report);
         if (!report.Failed)
         {
             report.Info(preset.Note());

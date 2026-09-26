@@ -39,7 +39,8 @@ public static partial class Work
         }
     }
 
-    private static Report InstallX86(string gameDir, string releaseDir, Preset preset, string? proxy)
+    private static Report InstallX86(string gameDir, string releaseDir, Preset preset, PayloadPins pins,
+        string? proxy, bool mochizuki)
     {
         var report = new Report();
         if (X86Target(gameDir, report) is not { } target) return report;
@@ -64,6 +65,15 @@ public static partial class Work
         var installDir = Engine.InstallDirectory(target);
         var proxyName = ProxyNameFor(preset, installDir, proxy);
         CheckDoubleReShade(installDir, preset, report, proxyName, ShippedReShade(release, preset));
+
+        // The mochizuki runtime runs in the 64-bit helper, beside it, as it does beside a 64-bit game.
+        var extra = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
+        if (mochizuki)
+        {
+            if (pins.MochizukiFiles.Count == 0) report.Err(NoMochizuki);
+            else AddMochizuki(extra, release, pins, report);
+        }
+        var recorded = MochizukiRecorded(InstalledManifest(installDir, Route.X86));
         if (report.Failed)
         {
             report.Info("Nothing was written: fix the problem above and run it again.");
@@ -73,9 +83,11 @@ public static partial class Work
         var app = new X86Installer(release);
         try
         {
-            app.Install(target, preset.ManifestPreset(), proxyName);
+            app.Install(target, preset.ManifestPreset(), proxyName, extra, recorded);
             foreach (var line in app.Log) Narrate(line, report);
             if (!HasStandardShaders(installDir)) LeaveOutEffect(installDir, report);
+            if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInAddon);
+            else if (recorded.Count > 0) AfterMochizukiRetired(installDir, report);
             report.Info(preset.Note());
             report.Info(
                 "It starts switched off. Open the overlay with Home, or press Ctrl+End. StartOn=1 in "

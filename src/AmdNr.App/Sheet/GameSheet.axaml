@@ -294,7 +294,7 @@
                           <TextBlock Text="{DynamicResource Str.MochizukiSection}" Classes="section" />
                           <CheckBox x:Name="MochizukiBox" IsCheckedChanged="OnMochizukiChanged"
                                     AutomationProperties.Name="{DynamicResource Str.MochizukiCheck}">
-                            <TextBlock Text="{DynamicResource Str.MochizukiCheck}" TextWrapping="Wrap" />
+                            <TextBlock x:Name="MochizukiCheckText" Text="{DynamicResource Str.MochizukiCheck}" TextWrapping="Wrap" />
                           </CheckBox>
                           <TextBlock x:Name="MochizukiNote" Classes="muted" TextWrapping="Wrap" LineHeight="18" />
                         </StackPanel>

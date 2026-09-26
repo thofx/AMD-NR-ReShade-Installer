@@ -78,6 +78,7 @@ public static partial class Work
 
         gone += SweepDroppings(dir, report);
         PruneEmpty(dir, [Engine.BackupDir, Engine.LegacyBackupDir, ShaderFolder, "reshade-shaders"], report);
+        AfterMochizukiUninstall(dir, report);
         if (opti) AfterOptiScalerUninstall(dir, recorded.Count > 0, report);
 
         if (gone == 0) report.Warn("Nothing of ours was in that folder.");

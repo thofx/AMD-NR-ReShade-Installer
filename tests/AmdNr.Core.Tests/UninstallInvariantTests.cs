@@ -190,7 +190,7 @@ public class UninstallInvariantTests
     }
 
     /// <summary>An unpacked x86 release of stand-ins, and an installer pinned to them.</summary>
-    private static (X86Installer Installer, string[] Pinned) X86Release(string tag)
+    internal static (X86Installer Installer, string[] Pinned) X86Release(string tag)
     {
         var release = Fixture.Temp($"x86-release-{tag}");
         var files = Path.Combine(release, "files");

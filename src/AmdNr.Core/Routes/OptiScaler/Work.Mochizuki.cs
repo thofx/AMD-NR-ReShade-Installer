@@ -1,9 +1,12 @@
-// The mochizuki runtime, the third one OptiScaler can drive from 0.4.0 on: DLSS 5's NR network as
+// The mochizuki runtime, the third one OptiScaler can drive from 0.4.0 on, and the second one the
+// ReShade add-on can drive from v0.6.8 on: DLSS 5's NR network as
 // Vulkan compute shaders (mochizuki0323/DLSSNR-AMD), run on a Vulkan device of its own beside the
 // game's D3D12. It needs RDNA4's FP8 matrix instructions. Unlike the other two it goes in only when
 // somebody asks for it -- it is experimental and its model is 141 MB -- and asking for it also makes
 // it the NR runtime in OptiScaler.ini, the one key this app writes there. An install that does not
-// ask for it takes out what an earlier one put in, so the choice is what the folder holds.
+// ask for it takes out what an earlier one put in, so the choice is what the folder holds. On the
+// ReShade routes it only puts the files in: amd-nr.ini is the person's, and the add-on's panel picks
+// the runtime (NR runtime), falling back to danielblnc when mochizuki's files are not there.
 //
 // Everything else is the OptiScaler route's own: the same transaction and manifest, every file
 // pinned, and uninstall taking back what went in.
@@ -56,8 +59,8 @@ public static partial class Work
     {
         var dir = ResolveSource(gameDir);
         if (dir.Length == 0 || !Directory.Exists(dir)) return false;
-        return InstalledManifest(dir) is { } m && m.Preset == Preset.OptiScaler.ManifestPreset()
-               && m.Entries.Any(e => e.Name == MochizukiRuntimeName)
+        return new[] { Route.X64, Route.X86 }.Any(route =>
+                   InstalledManifest(dir, route)?.Entries.Any(e => e.Name == MochizukiRuntimeName) == true)
                && File.Exists(Path.Combine(dir, MochizukiRuntimeName));
     }
 
@@ -114,7 +117,12 @@ public static partial class Work
     }
 
     private const string NoMochizuki =
-        "The OptiScaler version chosen has no mochizuki runtime. Pick 0.4.0-amd-nr or newer, or leave mochizuki off.";
+        "The version chosen has no mochizuki runtime. Pick OptiScaler 0.4.0-amd-nr or the add-on v0.6.8 or newer, "
+        + "or leave mochizuki off.";
+
+    private const string MochizukiPickInAddon =
+        "To use it, open the add-on's panel (Home), pick mochizuki (Vulkan) under NR runtime and restart the game. "
+        + "It stays on danielblnc until then.";
 
     /// <summary>Every mochizuki file, verified against its pin, under the name it takes in the game.</summary>
     private static void AddMochizuki(SortedDictionary<string, byte[]> files, string src, PayloadPins pins, Report report)

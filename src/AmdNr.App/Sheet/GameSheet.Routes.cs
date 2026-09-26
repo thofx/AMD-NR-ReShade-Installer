@@ -295,7 +295,10 @@ public partial class GameSheet
     {
         if (_card is not { } card) return;
         var machine = Session.Machine;
-        MochizukiSection.IsVisible = card.Entry.Preset.IsOptiScaler() && _version?.Opti is { } opti && CarriesMochizuki(opti);
+        var addon = !card.Entry.Preset.IsOptiScaler();
+        MochizukiSection.IsVisible = OffersMochizuki(card);
+        MochizukiCheckText.Text = Ui.Text(addon ? "Str.MochizukiCheckAddon" : "Str.MochizukiCheck");
+        var note = Ui.Text(addon ? "Str.MochizukiNoteAddon" : "Str.MochizukiNote");
         _setting = true;
         MochizukiBox.IsEnabled = machine?.Rdna4 != false;
         MochizukiBox.IsChecked = ChoseMochizuki(card) && machine?.Rdna4 != false;
@@ -303,17 +306,31 @@ public partial class GameSheet
         MochizukiNote.Text = machine?.Rdna4 switch
         {
             false => Ui.Format("Str.MochizukiNotRdna4", machine!.Gpu),
-            null => Ui.Text("Str.MochizukiNote") + " " + Ui.Text("Str.MochizukiUnknownGpu"),
-            _ => Ui.Text("Str.MochizukiNote"),
+            null => note + " " + Ui.Text("Str.MochizukiUnknownGpu"),
+            _ => note,
         };
     }
 
-    /// <summary>Whether an install from this sheet brings mochizuki: the OptiScaler route, a version
-    /// that carries it, ticked for this game, and not a card known not to be RDNA4. An install without
-    /// it takes out what an earlier one put in, so this is also what stays in the folder.</summary>
+    /// <summary>Whether an install from this sheet brings mochizuki: a version that carries it, ticked
+    /// for this game, and not a card known not to be RDNA4. An install without it takes out what an
+    /// earlier one put in, so this is also what stays in the folder.</summary>
     private bool WantsMochizuki(GameCard card) =>
-        card.Entry.Preset.IsOptiScaler() && ChoseMochizuki(card) && Session.Machine?.Rdna4 != false
-        && _version?.Opti is { } opti && CarriesMochizuki(opti);
+        OffersMochizuki(card) && ChoseMochizuki(card) && Session.Machine?.Rdna4 != false;
+
+    /// <summary>The first add-on that can drive the mochizuki runtime (its NR runtime choice).</summary>
+    private static readonly Version MochizukiAddon = new(0, 6, 8);
+
+    /// <summary>Whether the version chosen can take mochizuki: an OptiScaler release that carries it, or
+    /// an add-on from <see cref="MochizukiAddon"/> on with the payload holding a mochizuki build.</summary>
+    private bool OffersMochizuki(GameCard card)
+    {
+        if (card.Entry.Preset.IsOptiScaler()) return _version?.Opti is { } opti && CarriesMochizuki(opti);
+        if (Selected() is not { } manifest) return false;
+        var own = card.Entry.Preset.Route() == Route.X86 ? PayloadManifest.BridgeComponent : PayloadManifest.AddonComponent;
+        var version = _version?.Version
+                      ?? (manifest.Has(own) ? AddonReleases.Version(manifest.Component(own).Version) : null);
+        return version >= MochizukiAddon && manifest.Pins().MochizukiFiles.Count > 0;
+    }
 
     /// <summary>The box as the person last set it for this game, or, until they touch it, what the
     /// folder has: on where this app installed mochizuki. Read off the folder's manifest, like the

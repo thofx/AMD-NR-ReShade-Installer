@@ -132,6 +132,7 @@ public static partial class Work
         // and its runtime is a different build under the same name: compared against the add-on's
         // pins, every OptiScaler install would read as out of date for ever.
         if (preset == Preset.OptiScaler.ManifestPreset()) return PinnedForOptiScaler(payload);
+        payload = payload.WithMochizuki();
 
         var pinned = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string[] components = route == Route.X64
@@ -144,6 +145,11 @@ public static partial class Work
             foreach (var file in payload.Component(name).Installed)
                 pinned[Path.GetFileName(file.Name)] = Engine.Lower(file.Sha256);
         }
+        // Asked about only where an install has them, as on the OptiScaler route.
+        if (payload.Has(PayloadManifest.MochizukiComponent) && payload.Has(PayloadManifest.MochizukiModelComponent))
+            foreach (var name in new[] { PayloadManifest.MochizukiComponent, PayloadManifest.MochizukiModelComponent })
+                foreach (var file in payload.Component(name).Installed)
+                    pinned[MochizukiDestination(file.RelativePath)] = Engine.Lower(file.Sha256);
         return pinned;
     }
 
@@ -342,20 +348,20 @@ public static partial class Work
     // Everything that can be known before a single byte is written, and cheap enough to redo while
     // a path is still being pasted: metadata, one open(), one free-space call.
 
-    /// <param name="mochizuki">The OptiScaler route only: install the mochizuki runtime as well, and
-    /// make it the NR runtime. Every other route ignores it.</param>
+    /// <param name="mochizuki">Install the mochizuki runtime as well. The OptiScaler route also makes it
+    /// the NR runtime in OptiScaler.ini; the ReShade routes leave that to the add-on's panel.</param>
     public static Report Preflight(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
         string? proxy = null, bool mochizuki = false) =>
         preset.IsOptiScaler()
             ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki)
-            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy);
+            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki);
 
     // -- Install ---------------------------------------------------------------------------------
 
     /// <param name="mochizuki">See <see cref="Preflight"/>.</param>
     public static Report Install(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
         string? proxy = null, bool mochizuki = false) =>
-        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, proxy)
+        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki)
         : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki)
-        : InstallReShade(gameDir, payloadDir, preset, pins, proxy);
+        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki);
 }

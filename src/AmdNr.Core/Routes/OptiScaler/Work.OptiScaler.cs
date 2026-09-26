@@ -101,10 +101,10 @@ public static partial class Work
         return pinned;
     }
 
-    /// <summary>The 64-bit manifest in this folder, when this build can read one.</summary>
-    private static Manifest? InstalledManifest(string dir)
+    /// <summary>The route's manifest in this folder (the 64-bit one unless told), when this build can read one.</summary>
+    private static Manifest? InstalledManifest(string dir, Route route = Route.X64)
     {
-        var path = Path.Combine(dir, Engine.ManifestNameX64);
+        var path = Path.Combine(dir, route.ManifestFileName());
         if (!File.Exists(path)) return null;
         try { return Manifest.Decode(System.Text.Encoding.UTF8.GetString(Engine.Read(path))); }
         catch (InstallException) { return null; }
@@ -378,7 +378,6 @@ public static partial class Work
     /// rest of it is its own installer's to take.</summary>
     private static void AfterOptiScalerUninstall(string dir, bool recorded, Report report)
     {
-        AfterMochizukiUninstall(dir, report);
         var cache = Path.Combine(dir, ShaderCache);
         try
         {
