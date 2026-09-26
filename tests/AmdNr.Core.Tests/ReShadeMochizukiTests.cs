@@ -59,6 +59,32 @@ public class ReShadeMochizukiTests
         Assert.Empty(MochizukiTests.Payload(placeholder: true).WithMochizuki().Pins().MochizukiFiles);
     }
 
+    /// <summary>The sheet installs a version picked from the add-on's GitHub releases through
+    /// AddonReleases.With, and v0.6.8 is always one of them. That manifest lost the OptiScaler releases
+    /// the mochizuki build comes from, so installer v0.6.2 never showed the box on a ReShade route.</summary>
+    [Fact]
+    public void AnAddOnPickedFromItsReleasesStillCarriesTheMochizukiBuild()
+    {
+        var payload = MochizukiTests.Payload();
+        var files = new[] { Work.AddonName, Work.Addon32Name, Work.Host64Name, AddonReleases.BridgeSums };
+        var release = new AddonRelease
+        {
+            Version = new Version(0, 6, 8),
+            Tag = "v0.6.8",
+            Title = "v0.6.8",
+            Published = DateTimeOffset.Parse("2026-09-26T00:00:00Z"),
+            Assets = files.ToDictionary(f => f, f => new ReleaseAsset(f, $"https://example.invalid/{f}", 1024),
+                StringComparer.OrdinalIgnoreCase),
+            Sums = files.ToDictionary(f => f, _ => new string('a', 64), StringComparer.OrdinalIgnoreCase),
+        };
+
+        var chosen = AddonReleases.With(payload, release).WithMochizuki();
+        Assert.Equal("0.6.8", chosen.Component(PayloadManifest.AddonComponent).Version);
+        Assert.Equal(payload.WithMochizuki().Pins().MochizukiFiles.OrderBy(p => p.Key, StringComparer.Ordinal),
+            chosen.Pins().MochizukiFiles.OrderBy(p => p.Key, StringComparer.Ordinal));
+        Assert.NotEmpty(chosen.Pins().MochizukiFiles);
+    }
+
     [Fact]
     public void TheShippedManifestPinsAnAddOnThatDrivesMochizukiAndOffersItsBuild()
     {

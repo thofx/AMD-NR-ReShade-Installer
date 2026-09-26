@@ -342,6 +342,9 @@ public static class AddonReleases
             Repo = manifest.Repo,
             Tag = manifest.Tag,
             Components = components,
+            // Kept for what the chosen add-on reads out of them: the ReShade routes take the mochizuki
+            // build from the newest OptiScaler release (PayloadManifest.WithMochizuki).
+            Releases = manifest.Releases,
         };
     }
 

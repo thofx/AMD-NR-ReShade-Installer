@@ -78,6 +78,20 @@ internal static class MochizukiFlow
         click(install);
         check(until(() => !main.Session.Busy, 30) && File.Exists(Path.Combine(game, "MochizukiNrRuntime.dll")),
             "ticked again, Install brings it back");
+
+        // On the ReShade route the same box, for the add-on (v0.6.8 on) to drive the build. Installer
+        // v0.6.2 kept it inside the OptiScaler panel, hidden with it, so IsVisible alone proved nothing.
+        var route = sheet.FindControl<RadioButton>("RouteReShade")!;
+        route.IsChecked = true;
+        check(until(() => section.IsEffectivelyVisible, 5), "the ReShade route shows the mochizuki box too");
+        until(() => false, 1);
+        if (section.FindAncestorOfType<ScrollViewer>() is { Content: Visual reshadeContent } reshadeScroll
+            && section.TranslatePoint(new Point(0, 0), reshadeContent) is { } reshadeAt)
+            reshadeScroll.Offset = new Vector(0, Math.Max(0, reshadeAt.Y - 160));
+        until(() => false, 1);
+        save(main, "flow-2-reshade-mochizuki");
+        sheet.FindControl<RadioButton>("RouteOpti")!.IsChecked = true;
+        check(until(() => section.IsEffectivelyVisible, 5), "and back on OptiScaler it is still there");
     }
 
     /// <summary>A newer OptiScaler under "releases" with the same OptiScaler files as <paramref name="from"/>
