@@ -110,10 +110,12 @@ public class OptiScalerVersionTests
     {
         var shipped = PayloadManifest.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "payload.json")));
         var offered = shipped.Offered(PayloadManifest.OptiScalerComponent);
-        // The newest release is offered first, with its own opti-runtime (0.4.1); 0.4.1 keeps 0.4.0,
-        // which is the newest it accepts.
-        Assert.Equal("0.4.2-amd-nr", offered[0].Version);
+        // The newest release is offered first, with its own opti-runtime (0.4.1, like 0.4.2); 0.4.1 keeps
+        // 0.4.0, which is the newest it accepts.
+        Assert.Equal("0.4.3-amd-nr", offered[0].Version);
         Assert.Equal("0.4.1", shipped.With(offered[0]).Component(PayloadManifest.OptiRuntimeComponent).Version);
+        var r042 = offered.Single(r => r.Version == "0.4.2-amd-nr");
+        Assert.Equal("0.4.1", shipped.With(r042).Component(PayloadManifest.OptiRuntimeComponent).Version);
         var r041 = offered.Single(r => r.Version == "0.4.1-amd-nr");
         Assert.Equal("0.4.0", shipped.With(r041).Component(PayloadManifest.OptiRuntimeComponent).Version);
         Assert.Contains(offered, r => r.Version == "0.4.0-amd-nr");
@@ -139,10 +141,13 @@ public class OptiScalerVersionTests
         }
         Assert.Contains("native-game-tiled-assets/block0-ffn.f16", shipped.With(offered[0]).Pins().OptiFiles.Keys);
 
-        // The mochizuki runtime rides in 0.4.0 to 0.4.2, the same build: every file it lists lands under a name the
-        // transaction takes, and its model is the one the runtime was built against.
+        // The mochizuki runtime rides in 0.4.0 to 0.4.2 as one build, and 0.4.3 carries its fix for a
+        // render-resolution change: every file it lists lands under a name the transaction takes, and its model is
+        // the one the runtime was built against.
         var next = offered[0];
         Assert.Equal(r040.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
+            r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
+        Assert.NotEqual(r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
             next.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
         var mochizuki = shipped.With(next).Pins().MochizukiFiles;
         Assert.Contains("MochizukiNrRuntime.dll", mochizuki.Keys);
