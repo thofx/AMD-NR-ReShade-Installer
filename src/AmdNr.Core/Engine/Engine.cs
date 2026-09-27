@@ -206,6 +206,10 @@ public static partial class Engine
         "LmxxfNrRuntime.dll",
         // OptiScaler 0.4.0's third runtime, mochizuki. Its dlssnr-amd folder is matched by rule.
         "MochizukiNrRuntime.dll",
+        // Nothing installs this name. The author's setup loads danielblnc's runtime under it, and the
+        // OptiScaler route moves that file to the backup when it takes it as its runtime; uninstall
+        // puts it back.
+        "version.dll",
     };
 
     /// <summary>Folders whose every plain file is ours: the lmxxf runtime's HIP modules and its

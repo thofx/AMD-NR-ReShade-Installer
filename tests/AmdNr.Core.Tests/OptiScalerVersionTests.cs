@@ -110,12 +110,14 @@ public class OptiScalerVersionTests
     {
         var shipped = PayloadManifest.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "payload.json")));
         var offered = shipped.Offered(PayloadManifest.OptiScalerComponent);
-        // The newest release is offered first, with its own opti-runtime: 0.4.3 takes danielblnc's public 0.4.2,
-        // which no earlier OptiScaler accepts, so 0.4.2 keeps 0.4.1 and 0.4.1 keeps 0.4.0.
-        Assert.Equal("0.4.3-amd-nr", offered[0].Version);
+        // The newest release is offered first, with its own opti-runtime: 0.4.4 and 0.4.3 take danielblnc's public
+        // 0.4.2, which no earlier OptiScaler accepts, so 0.4.2 keeps 0.4.1 and 0.4.1 keeps 0.4.0.
+        Assert.Equal("0.4.4-amd-nr", offered[0].Version);
         var newestRuntime = shipped.With(offered[0]).Component(PayloadManifest.OptiRuntimeComponent);
         Assert.Equal("0.4.2", newestRuntime.Version);
         Assert.Equal("8aa2dcc5b6596aca97995dbfd4e0a9790d8c15108495e0ed154dd15dbb5b465a", newestRuntime.Files.Single().Sha256);
+        var r043 = offered.Single(r => r.Version == "0.4.3-amd-nr");
+        Assert.Equal("0.4.2", shipped.With(r043).Component(PayloadManifest.OptiRuntimeComponent).Version);
         var r042 = offered.Single(r => r.Version == "0.4.2-amd-nr");
         Assert.Equal("0.4.1", shipped.With(r042).Component(PayloadManifest.OptiRuntimeComponent).Version);
         var r041 = offered.Single(r => r.Version == "0.4.1-amd-nr");
@@ -143,13 +145,15 @@ public class OptiScalerVersionTests
         }
         Assert.Contains("native-game-tiled-assets/block0-ffn.f16", shipped.With(offered[0]).Pins().OptiFiles.Keys);
 
-        // The mochizuki runtime rides in 0.4.0 to 0.4.2 as one build, and 0.4.3 carries its fix for a
-        // render-resolution change: every file it lists lands under a name the transaction takes, and its model is
-        // the one the runtime was built against.
+        // The mochizuki runtime rides in 0.4.0 to 0.4.2 as one build, 0.4.3 carries its fix for a
+        // render-resolution change and 0.4.4 the faster build: every file it lists lands under a name the
+        // transaction takes, and its model is the one the runtime was built against.
         var next = offered[0];
         Assert.Equal(r040.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
             r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
         Assert.NotEqual(r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
+            r043.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
+        Assert.NotEqual(r043.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
             next.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
         var mochizuki = shipped.With(next).Pins().MochizukiFiles;
         Assert.Contains("MochizukiNrRuntime.dll", mochizuki.Keys);
@@ -198,7 +202,21 @@ public class OptiScalerVersionTests
         Assert.False(Engine.IsAllowed("native-game-tiled-assets/"));
         Assert.False(Engine.IsAllowed("../native-game-tiled-assets/x"));
         Assert.False(Engine.IsAllowed("Engine/x.dll"));
-        Assert.False(Engine.IsAllowed("version.dll"));
+        Assert.False(Engine.IsAllowed("winhttp.dll"));
+    }
+
+    [Fact]
+    public void AnAuthorRuntimeIsRunOnlyByAnOptiScalerThatAcceptsIt()
+    {
+        const string r043 = "d1e320862a8763ac39e7ce194536d4b6c55ba61bae9e8a92753cec32df67a457";
+        const string r041 = "823063eb4c76b1334fd1800c41798873ae61d4016af0406f1f0b9dce57b1d376";
+        const string r050 = "cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a";
+        Assert.Equal(new Version(0, 4, 3), Work.AcceptedRuntime(r043, "0.4.3-amd-nr"));
+        Assert.Null(Work.AcceptedRuntime(r043, "0.4.2-amd-nr"));
+        Assert.Equal(new Version(0, 4, 1), Work.AcceptedRuntime(r041, "0.4.2-amd-nr"));
+        Assert.Null(Work.AcceptedRuntime(r050, "0.4.3-amd-nr"));
+        Assert.Equal(new Version(0, 5, 0), Work.AcceptedRuntime(r050, "0.4.4-amd-nr"));
+        Assert.Null(Work.AcceptedRuntime(r043, ""));
     }
 
     [Fact]

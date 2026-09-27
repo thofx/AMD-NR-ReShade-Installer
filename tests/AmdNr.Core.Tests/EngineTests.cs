@@ -329,6 +329,38 @@ public class EngineTests
     }
 
     [Fact]
+    public void ADisplacedFileGoesToTheBackupAndUninstallPutsItBack()
+    {
+        var root = Fixture.Temp("displace");
+        var author = "the author's own runtime"u8.ToArray();
+        File.WriteAllBytes(Path.Combine(root, "version.dll"), author);
+        var files = new SortedDictionary<string, byte[]>(StringComparer.Ordinal)
+        {
+            ["dlssnr_amd_pass1.dll"] = author,
+        };
+
+        var log = new List<string>();
+        Transaction.Apply(root, "OptiScaler", Route.X64, files, log, displace: ["version.dll"]);
+        Assert.False(File.Exists(Path.Combine(root, "version.dll")));
+        Assert.Contains("MOVED to the backup: version.dll", log);
+        var entry = Manifest.Decode(Encoding.UTF8.GetString(File.ReadAllBytes(Path.Combine(root, Route.X64.ManifestFileName()))))
+            .Entries.Single(e => e.Name == "version.dll");
+        Assert.True(entry.Owned);
+        Assert.Equal(Engine.Sha(author), entry.BackupHash);
+
+        // Put back by hand after the install, then installed over again: the newer one is what
+        // uninstall restores, and the first backup is spent.
+        var again = "the author's newer runtime"u8.ToArray();
+        File.WriteAllBytes(Path.Combine(root, "version.dll"), again);
+        Transaction.Apply(root, "OptiScaler", Route.X64, files, [], displace: ["version.dll"]);
+        Assert.False(File.Exists(Path.Combine(root, entry.Backup)));
+
+        Transaction.Uninstall(root, Route.X64, false, log);
+        Assert.Equal(again, File.ReadAllBytes(Path.Combine(root, "version.dll")));
+        Assert.False(File.Exists(Path.Combine(root, "dlssnr_amd_pass1.dll")));
+    }
+
+    [Fact]
     public void ApplyRefusesAFilenameItDoesNotManage()
     {
         var root = Fixture.Temp("unmanaged");

@@ -42,16 +42,74 @@ public static partial class Work
     private const string ShaderCache = "shaders/shader-cache";
 
     /// <summary>The runtime builds this project has seen, by the start of their SHA-256: danielblnc's
-    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1 and 0.4.2, the 0.4.3 he gives his supporters, and the
-    /// 0.3.0, 0.4.0 and 0.4.1 the add-on pins. Any of them sitting in the game folder as version.dll is the author's
-    /// own way of loading the runtime.</summary>
+    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1 and 0.4.2, the 0.4.3 and 0.5.0 he gives his supporters, and
+    /// the 0.3.0, 0.4.0 and 0.4.1 the add-on pins. Any of them sitting in the game folder as version.dll is the
+    /// author's own way of loading the runtime.</summary>
     private static readonly string[] KnownRuntimePrefixes =
     [
         "e145ff963b1ef614", "ddd82d313aa74c2e", "bc97f3b06718e190",
         "8321cae728d28cb7", "70af3fb757f83f71", "b108d6407eb7f094",
         "907b30a61644a6d7", "d62be3d8b9fbb3c6", "ff6feffa41abccce",
         "823063eb4c76b133", "c8808716c286a34f", "8aa2dcc5b6596aca", "d1e320862a8763ac",
+        "cddfb09e01934795",
     ];
+
+    /// <summary>The name the author's setup loads the runtime under.</summary>
+    private const string AuthorRuntimeName = "version.dll";
+
+    /// <summary>The danielblnc runtimes OptiScaler runs in place of the one it ships with: SHA-256, runtime
+    /// version, and the first OptiScaler release whose AmdLayout.h accepts that build (0.2.17 is in there too,
+    /// but the release's own Setup refuses it).</summary>
+    private static readonly (string Sha, Version Runtime, Version Since)[] AcceptedRuntimes =
+    [
+        ("8321cae728d28cb7632d0d58d3d913e91132bf7645c126505698fbe4cd5a0138", new(0, 3, 0), new(0, 1, 0)),
+        ("b108d6407eb7f094a4f9111edd778eee7b978b648d413a9fc7aeedfdd914c154", new(0, 3, 1), new(0, 1, 0)),
+        ("d62be3d8b9fbb3c6c81982c4ddb3dfa00eb9662e3206925cbe5b7e1bc6798b80", new(0, 4, 0), new(0, 4, 1)),
+        ("823063eb4c76b1334fd1800c41798873ae61d4016af0406f1f0b9dce57b1d376", new(0, 4, 1), new(0, 4, 2)),
+        ("8aa2dcc5b6596aca97995dbfd4e0a9790d8c15108495e0ed154dd15dbb5b465a", new(0, 4, 2), new(0, 4, 3)),
+        ("d1e320862a8763ac39e7ce194536d4b6c55ba61bae9e8a92753cec32df67a457", new(0, 4, 3), new(0, 4, 3)),
+        ("cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a", new(0, 5, 0), new(0, 4, 4)),
+    ];
+
+    /// <summary>"0.4.3-amd-nr" or "0.4.2" as a version, or null.</summary>
+    private static Version? VersionOf(string text) =>
+        Version.TryParse(text.Split('-')[0], out var v) ? v : null;
+
+    /// <summary>The runtime version of a build the given OptiScaler release runs, or null.</summary>
+    internal static Version? AcceptedRuntime(string sha, string optiScalerVersion) =>
+        VersionOf(optiScalerVersion) is { } opti
+            ? AcceptedRuntimes.FirstOrDefault(r => r.Sha == sha && opti >= r.Since).Runtime
+            : null;
+
+    /// <summary>The runtime an install takes from the game folder in place of the payload's: the author's
+    /// version.dll when the chosen OptiScaler runs that build, or else the pass 1 an earlier install put in,
+    /// when it is a build that OptiScaler runs and newer than the payload's (a build of the author's kept
+    /// across updates). Null when the payload's is the one.</summary>
+    private static (byte[] Bytes, Version Runtime, string From)? OwnRuntime(string dir, PayloadPins pins)
+    {
+        foreach (var name in new[] { AuthorRuntimeName, OptiPasses[0] })
+        {
+            var path = Path.Combine(dir, name);
+            if (Engine.SizeOf(path) is not (> 7_000_000 and < 40_000_000)) continue;
+            var bytes = Engine.Read(path);
+            if (AcceptedRuntime(Engine.Sha(bytes), pins.OptiScalerVersion) is not { } runtime) continue;
+            if (name == AuthorRuntimeName || VersionOf(pins.OptiRuntimeVersion) is { } shipped && runtime > shipped)
+                return (bytes, runtime, name);
+        }
+        return null;
+    }
+
+    /// <summary>Whether a runtime pass an install recorded is current although the newest payload pins
+    /// another build: one that release runs and newer than the one it ships (<see cref="OwnRuntime"/>).</summary>
+    internal static bool OwnRuntimeIsCurrent(PayloadManifest payload, string name, string sha)
+    {
+        if (!OptiPasses.Contains(name)) return false;
+        payload = payload.Newest(PayloadManifest.OptiScalerComponent);
+        return payload.Has(PayloadManifest.OptiScalerComponent) && payload.Has(PayloadManifest.OptiRuntimeComponent)
+               && AcceptedRuntime(sha, payload.Component(PayloadManifest.OptiScalerComponent).Version) is { } own
+               && VersionOf(payload.Component(PayloadManifest.OptiRuntimeComponent).Version) is { } shipped
+               && own > shipped;
+    }
 
     /// <summary>Files whose presence says the game has an upscaler for OptiScaler to take over. The
     /// detection reads the same list to decide whether a D3D11 and D3D12 game is recommended this route.</summary>
@@ -119,17 +177,26 @@ public static partial class Work
         m is not null && m.Preset != Preset.OptiScaler.ManifestPreset()
         && m.Entries.Any(e => e.Owned && !e.Configuration && File.Exists(Path.Combine(dir, e.Name)));
 
-    private static void CheckRuntimeAsVersionDll(string dir, Report report)
+    private static void CheckRuntimeAsVersionDll(string dir, PayloadPins pins, Report report)
     {
-        var path = Path.Combine(dir, "version.dll");
+        var path = Path.Combine(dir, AuthorRuntimeName);
         // Size first, so this stays a stat() for every version.dll that is something else.
-        if (Engine.SizeOf(path) is not (> 7_000_000 and < 14_000_000)) return;
+        if (Engine.SizeOf(path) is not (> 7_000_000 and < 40_000_000)) return;
         var sha = Engine.HashFile(path);
+        if (AcceptedRuntime(sha, pins.OptiScalerVersion) is { } runtime)
+        {
+            report.Info(
+                $"version.dll here is danielblnc's runtime {runtime}, loaded the way its author's setup loads it. "
+                + "OptiScaler takes it as its runtime (dlssnr_amd_pass1-3.dll) in place of the download, and "
+                + "version.dll goes to the backup, since both at once would be two drivers on one runtime. "
+                + "Uninstall puts it back.");
+            return;
+        }
         if (!KnownRuntimePrefixes.Any(p => sha.StartsWith(p, StringComparison.Ordinal))) return;
         report.Err(
             "version.dll here is the DLSS-NR-on-AMD runtime itself, loaded the way its author's setup "
-            + "loads it. OptiScaler drives that same runtime through dlssnr_amd_pass1-3.dll, and both "
-            + "at once is two drivers on one runtime. Move version.dll out of this folder and run this again.");
+            + $"loads it, in a build OptiScaler {pins.OptiScalerVersion} does not run. Beside OptiScaler it "
+            + "would be two drivers on one runtime. Move version.dll out of this folder and run this again.");
     }
 
     private static void CheckOptiInTheWay(string dir, string proxyName, Manifest? m, Report report)
@@ -237,7 +304,8 @@ public static partial class Work
         var proxyName = OptiProxyFor(proxy);
         var manifest = InstalledManifest(dir);
         var retiring = !mochizuki && MochizukiRecorded(manifest).Count > 0;
-        var held = new[] { proxyName, WeightsName }.Concat(OptiPasses)
+        var displacing = OwnRuntime(dir, pins)?.From == AuthorRuntimeName;
+        var held = new[] { proxyName, WeightsName }.Concat(OptiPasses).Concat(displacing ? [AuthorRuntimeName] : [])
             .Where(n => Engine.IsLocked(Path.Combine(dir, n)))
             .Concat(mochizuki || retiring ? MochizukiHeld(dir) : []).ToList();
         if (held.Count > 0)
@@ -256,7 +324,7 @@ public static partial class Work
         }
 
         CheckOptiInTheWay(dir, proxyName, manifest, report);
-        CheckRuntimeAsVersionDll(dir, report);
+        CheckRuntimeAsVersionDll(dir, pins, report);
         CheckUpscaler(dir, report);
         CheckOptiRouteIsReachable(dir, report);
         if (!mochizuki && manifest?.Entries.Any(e => e.Name == MochizukiRuntimeName && e.Owned) == true)
@@ -309,7 +377,7 @@ public static partial class Work
         var proxyName = OptiProxyFor(proxy);
         var manifest = InstalledManifest(dir);
         CheckOptiInTheWay(dir, proxyName, manifest, report);
-        CheckRuntimeAsVersionDll(dir, report);
+        CheckRuntimeAsVersionDll(dir, pins, report);
         if (report.Failed)
         {
             report.Info("Nothing was written: fix the problem above and run it again.");
@@ -331,7 +399,8 @@ public static partial class Work
             }
             if (VerifiedPayload(src, path, sha, report) is { } bytes) files[destination] = bytes;
         }
-        if (VerifiedPayload(src, pins.OptiRuntimeName, pins.OptiRuntimeSha, report) is { } runtime)
+        var own = OwnRuntime(dir, pins);
+        if ((own?.Bytes ?? VerifiedPayload(src, pins.OptiRuntimeName, pins.OptiRuntimeSha, report)) is { } runtime)
             foreach (var pass in OptiPasses)
                 files[pass] = runtime;
         if (VerifiedPayload(src, WeightsName, pins.WeightsSha, report) is { } weights)
@@ -354,7 +423,8 @@ public static partial class Work
         var log = new List<string>();
         try
         {
-            Transaction.Apply(dir, Preset.OptiScaler.ManifestPreset(), Route.X64, files, log, recorded);
+            Transaction.Apply(dir, Preset.OptiScaler.ManifestPreset(), Route.X64, files, log, recorded,
+                own?.From == AuthorRuntimeName ? [AuthorRuntimeName] : null);
             foreach (var line in log) Narrate(line, report);
         }
         catch (InstallException e)
@@ -365,6 +435,12 @@ public static partial class Work
         }
 
         report.Info($"OptiScaler goes in as {proxyName}.");
+        if (own is { } o)
+            report.Info(o.From == AuthorRuntimeName
+                ? $"The runtime is danielblnc's {o.Runtime} from the version.dll that was here, in place of the "
+                  + $"download's {pins.OptiRuntimeVersion}. version.dll is in the backup, and uninstall puts it back."
+                : $"The runtime stays danielblnc's {o.Runtime}, already here and newer than the "
+                  + $"{pins.OptiRuntimeVersion} the download carries.");
         if (pins.OptiFiles.ContainsKey(LmxxfRuntimeName))
             report.Info(
                 "The lmxxf runtime went in too, with its weights. It runs on RDNA4 (gfx1201) cards only: "

@@ -40,6 +40,11 @@ public sealed class PayloadPins
     public string OptiRuntimeSha { get; init; } = string.Empty;
     public ulong OptiRuntimeSize { get; init; }
 
+    /// <summary>The OptiScaler release ("0.4.3-amd-nr") and the runtime version it ships ("0.4.2"): what
+    /// decides whether a runtime already in the game folder can be its runtime instead. Empty without the route.</summary>
+    public string OptiScalerVersion { get; init; } = string.Empty;
+    public string OptiRuntimeVersion { get; init; } = string.Empty;
+
     /// <summary>The mochizuki runtime's files -- the runtime, its shaders, its prewarm list and its
     /// model -- by their path in the payload folder. Empty when the OptiScaler version chosen does
     /// not carry it; installed only when it is asked for.</summary>
@@ -110,7 +115,9 @@ public static partial class Work
                 if (!entry.Owned || entry.Configuration) continue;
                 if ((pinned.TryGetValue(entry.Name, out var want)
                      || pinned.TryGetValue(Path.GetFileName(entry.Name), out want))
-                    && Engine.Lower(entry.Hash) != want)
+                    && Engine.Lower(entry.Hash) != want
+                    && !(manifest.Preset == Preset.OptiScaler.ManifestPreset()
+                         && OwnRuntimeIsCurrent(payload, entry.Name, Engine.Lower(entry.Hash))))
                     return true;
             }
         }

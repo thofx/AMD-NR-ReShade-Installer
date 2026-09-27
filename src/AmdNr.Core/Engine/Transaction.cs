@@ -15,14 +15,14 @@ public static partial class Transaction
     /// rather than leaving it as advice on one screen. The common case by far is the third one: the
     /// game is still open, and the old failure for that was an access-denied error from somewhere
     /// inside a copy.</summary>
-    public static void Guard(string dir, SortedDictionary<string, byte[]> desired)
+    public static void Guard(string dir, SortedDictionary<string, byte[]> desired, IEnumerable<string>? displace = null)
     {
         Engine.Require(Directory.Exists(dir), $"{dir} is not a folder.");
         Engine.Require(Engine.FolderIsWritable(dir),
             "That folder cannot be written to. It is either read-only or somewhere that needs "
             + "administrator rights -- run this installer as administrator, or move the game.");
 
-        var held = desired.Keys.Where(n => Engine.IsLocked(Path.Combine(dir, n))).ToList();
+        var held = desired.Keys.Concat(displace ?? []).Where(n => Engine.IsLocked(Path.Combine(dir, n))).ToList();
         Engine.Require(held.Count == 0,
             $"{string.Join(", ", held)} {(held.Count == 1 ? "is" : "are")} open by another program. "
             + "The game or emulator is almost certainly still running -- close it and this line goes away.");
@@ -37,6 +37,8 @@ public static partial class Transaction
             var existing = Engine.SizeOf(Path.Combine(dir, name));
             if (existing != (ulong)data.LongLength) need += (ulong)data.LongLength + (existing ?? 0);
         }
+        foreach (var name in (displace ?? []).Where(n => !desired.ContainsKey(n)))
+            need += Engine.SizeOf(Path.Combine(dir, name)) ?? 0;
 
         var free = Engine.FreeBytes(dir);
         if (free is { } available)
@@ -86,11 +88,14 @@ public static partial class Transaction
     /// <summary><paramref name="desired"/> is whatever the route's own planner decided to write;
     /// this function is deliberately ignorant of what those files mean. <paramref name="retire"/>
     /// names recorded files the route no longer wants here, taken out in the same transaction
-    /// (<see cref="PlanRetire"/>); a name that is also in <paramref name="desired"/> is not one.</summary>
+    /// (<see cref="PlanRetire"/>); a name that is also in <paramref name="desired"/> is not one.
+    /// <paramref name="displace"/> names files somebody else put here that the route takes out: each
+    /// goes to the backup, and uninstall puts it back.</summary>
     public static void Apply(string dir, string preset, Route route,
-        SortedDictionary<string, byte[]> desired, List<string> log, IEnumerable<string>? retire = null)
+        SortedDictionary<string, byte[]> desired, List<string> log, IEnumerable<string>? retire = null,
+        IEnumerable<string>? displace = null)
     {
-        Guard(dir, desired);
+        Guard(dir, desired, displace);
         MigrateLegacyManifest(dir, route);
         var manifestPath = Path.Combine(dir, route.ManifestFileName());
         Engine.SafePath(manifestPath);
@@ -214,7 +219,37 @@ public static partial class Transaction
             changes.Add(new Change { Name = name, Before = before, After = data, Existed = exists });
         }
 
+        // Taken out the way a write displaces a file, with nothing written in its place: the entry owns
+        // the name and holds the backup, which is what uninstall puts back.
+        var superseded = new List<string>();
+        foreach (var name in (displace ?? []).Distinct(StringComparer.Ordinal).Where(n => !desired.ContainsKey(n)))
+        {
+            Engine.Require(Engine.IsAllowed(name), $"Refusing to move an unmanaged filename: {name}");
+            var dst = Path.Combine(dir, name);
+            Engine.SafePath(dst);
+            if (!File.Exists(dst)) continue;
+            var before = Engine.Read(dst);
+            var old = Engine.Sha(before);
+            var backup = $"{Engine.BackupDir}/{stamp}/{name}";
+            var bp = Path.Combine(dir, backup);
+            Engine.SafePath(bp);
+            Engine.MakeParent(bp);
+            Engine.Write(bp, before);
+            Engine.HashIs(Engine.Read(bp), old, "Backup");
+            // Put back by the person after an earlier install took theirs out: this one is the original now.
+            if (m.Entries.Find(x => x.Name == name) is { } earlier)
+            {
+                if (earlier.Backup.Length > 0) superseded.Add(Path.Combine(dir, earlier.Backup));
+                m.Entries.Remove(earlier);
+            }
+            // The hash of nothing: no file is written under the name.
+            m.Entries.Add(new Entry { Name = name, Hash = Engine.Sha([]), Owned = true, Backup = backup, BackupHash = old });
+            changes.Add(new Change { Name = name, Before = before, After = null, Existed = true });
+            log.Add($"MOVED to the backup: {name}");
+        }
+
         var (retired, spent) = PlanRetire(dir, m, desired, retire ?? [], changes, log);
+        spent.AddRange(superseded);
 
         // Journal precedes target writes. Uninstall can recover interrupted installs using hashes.
         // The journal still lists what is being taken out, so an uninstall after a crash here

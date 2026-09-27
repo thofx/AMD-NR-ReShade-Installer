@@ -344,6 +344,8 @@ public sealed class PayloadManifest
             OptiRuntimeName = optiRuntime?.RelativePath ?? string.Empty,
             OptiRuntimeSha = optiRuntime is null ? string.Empty : Engine.Lower(optiRuntime.Sha256),
             OptiRuntimeSize = optiRuntime?.Size ?? 0,
+            OptiScalerVersion = Components.TryGetValue(OptiScalerComponent, out var opti) ? opti.Version : string.Empty,
+            OptiRuntimeVersion = optiRt?.Version ?? string.Empty,
             MochizukiFiles = mochizuki,
         };
     }
