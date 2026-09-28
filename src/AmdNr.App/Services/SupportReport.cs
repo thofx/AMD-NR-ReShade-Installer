@@ -163,7 +163,7 @@ public static class SupportReport
             o.AppendLine($"platform        {card.Platform}");
             o.AppendLine($"app id          {card.Entry.AppId ?? "-"}");
             o.AppendLine($"route           {card.Entry.Preset} ({card.Entry.Preset.ManifestPreset()})");
-            o.AppendLine($"route chosen by {(card.Entry.PresetChosen ? "the user" : "detection")}");
+            o.AppendLine($"route chosen by {(card.Entry.PresetChosen ? "hand" : "detection")}");
             o.AppendLine($"reads installed {card.Installed}");
             o.AppendLine();
 

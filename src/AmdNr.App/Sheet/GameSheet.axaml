@@ -226,6 +226,19 @@
                       </RadioButton>
                     </Grid>
 
+                    <!-- No route guessed for a game whose API could not be read: the person picks one. -->
+                    <Border x:Name="PickRouteBox" Classes="callout" IsVisible="False">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <PathIcon Data="{StaticResource IconWarn}" Width="16" Height="16"
+                                  Foreground="{DynamicResource Warn}" VerticalAlignment="Top" Margin="0,1,10,0" />
+                        <StackPanel Grid.Column="1" Spacing="3">
+                          <TextBlock Text="{DynamicResource Str.PickRouteTitle}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource WarnText}" />
+                          <TextBlock x:Name="PickRouteText" TextWrapping="Wrap" LineHeight="19" Foreground="{DynamicResource WarnText}" />
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+
                     <!-- ReShade: which API, the name it loads as, and the add-on version. -->
                     <Border x:Name="ReShadePanel" Classes="routePanel">
                       <StackPanel Spacing="12">

@@ -198,6 +198,8 @@ public sealed class Library(Session session)
     {
         card.Graphics = detection;
         if (!card.Entry.PresetChosen && detection.Preset is { } preset) card.Entry.Preset = preset;
+        // Nothing recommends a route and nobody chose one: the route installed there is the game's.
+        else if (!card.Entry.PresetChosen && card.InstalledVia == RouteFamily.OptiScaler) card.Entry.Preset = Preset.OptiScaler;
     }
 
     /// <summary>Cover art, a few at a time, and only for what has none yet. Steam publishes it on its

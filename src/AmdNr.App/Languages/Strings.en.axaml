@@ -120,6 +120,9 @@
   <sys:String x:Key="Str.MochizukiNoteAddon">The DLSS 5 network ported to Vulkan by mochizuki0323, which the add-on can run instead of danielblnc's from v0.6.8 on. RDNA4 only: RX 9000 series, AMD driver 25.10 or newer. It adds MochizukiNrRuntime.dll and a dlssnr-amd folder with its model, about 141 MB to download. To use it, pick mochizuki (Vulkan) under NR runtime in the add-on's panel and restart the game. The first start in each game compiles the network for up to a minute. Unticked, the next install takes out what this app put in of it.</sys:String>
   <sys:String x:Key="Str.MochizukiNotRdna4">Not offered on this card ({0}): mochizuki needs the FP8 matrix instructions of RDNA4, the RX 9000 series.</sys:String>
   <sys:String x:Key="Str.MochizukiUnknownGpu">This app could not tell which card this is; on anything but an RX 9000 series card, mochizuki stays off in game.</sys:String>
+  <sys:String x:Key="Str.PickRouteTitle">Pick a route to install with</sys:String>
+  <sys:String x:Key="Str.PickRouteBody">This app could not tell which graphics API {0} renders with, so it does not pick a route for you. OptiScaler is the one for a D3D12 game that offers DLSS, FSR or XeSS in its settings; ReShade, on D3D11 or D3D12, is the one for any other. Install waits until you pick.</sys:String>
+  <sys:String x:Key="Str.PickRouteDetail">The graphics API is unknown, so the route is yours to pick below.</sys:String>
   <sys:String x:Key="Str.SupporterTitle">danielblnc supporter build (newer)</sys:String>
   <sys:String x:Key="Str.SupporterPitch">A newer danielblnc runtime than the one this app downloads.</sys:String>
   <sys:String x:Key="Str.SupporterPitch.0.5.0">0.5.0 adds kernels for RDNA3 cards.</sys:String>

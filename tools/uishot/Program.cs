@@ -224,9 +224,7 @@ void Flows()
     Check(Until(() => sheet.IsOpen && verdict.Text is { Length: > 0 }), "a tile opens its sheet, with a verdict");
     Check(label.Text == S("Str.Install") && !uninstall.IsVisible, "nothing installed: Install, and no Uninstall");
 
-    Named<RadioButton>("RouteReShade").IsChecked = true;
-    Click(install);
-    Check(Until(() => !session.Busy), "Install finishes");
+    RouteFlow.Run(main, sheet, card, Check, Until, Click, (w, n) => Save(w, n)); // picks ReShade by hand and installs
     Check(card.InstalledVia == RouteFamily.ReShade && File.Exists(Path.Combine(game, "amd-nr.addon64")),
         $"the ReShade route is in the folder ({verdict.Text})");
     Check(label.Text == S("Str.Reinstall") && uninstall.IsVisible, "the sheet offers Reinstall and Uninstall");

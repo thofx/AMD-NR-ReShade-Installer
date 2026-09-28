@@ -40,6 +40,16 @@ public partial class GameSheet
         }
         _checkWaiting = false;
         var check = ++_checks;
+        if (RouteUndecided(card))
+        {
+            // Nothing to check a route against until there is one.
+            Steps.IsVisible = false;
+            _report.Clear();
+            ReportEmpty.IsVisible = false; // no check is running: it waits for the route
+            SetVerdict(Level.Warn, Ui.Text("Str.PickRouteTitle"), Ui.Text("Str.PickRouteDetail"));
+            Status("");
+            return;
+        }
         var pins = Pins();
         var preset = card.Entry.Preset;
         var proxy = _proxy;
@@ -86,7 +96,7 @@ public partial class GameSheet
 
     private async Task InstallAsync()
     {
-        if (_card is not { } card || Session.Busy) return;
+        if (_card is not { } card || Session.Busy || RouteUndecided(card)) return;
 
         // The other route is in the folder, and the engine will not put a second one over it. Say
         // what is about to happen, and do it in the order it has to happen in.

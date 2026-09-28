@@ -59,7 +59,7 @@ public static class InstallLog
             Line(o, "platform", card.Platform);
             Line(o, "app id", card.Entry.AppId ?? "-");
             Line(o, "route", $"{card.Entry.Preset} ({card.Entry.Preset.ManifestPreset()})");
-            Line(o, "route chosen by", card.Entry.PresetChosen ? "the user" : "detection");
+            Line(o, "route chosen by", card.Entry.PresetChosen ? "hand" : "detection");
 
             // The evidence behind the route. This is the field that explains a route that installed
             // cleanly and then did nothing in game.

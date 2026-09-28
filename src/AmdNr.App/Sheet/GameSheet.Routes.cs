@@ -56,9 +56,11 @@ public partial class GameSheet
         OptiMismatchText.Text = OptiSummary.Text;
         OptiMismatchBox.IsVisible = !graphics.CanRunOptiScaler;
 
+        // Neither card is checked while the route is the person's to pick.
+        var undecided = RouteUndecided(card);
         _setting = true;
-        RouteOpti.IsChecked = card.Entry.Preset.IsOptiScaler();
-        RouteReShade.IsChecked = !card.Entry.Preset.IsOptiScaler();
+        RouteOpti.IsChecked = !undecided && card.Entry.Preset.IsOptiScaler();
+        RouteReShade.IsChecked = !undecided && !card.Entry.Preset.IsOptiScaler();
         _setting = false;
         FillPresets(graphics);
         ShowChosenRoute();
@@ -107,8 +109,11 @@ public partial class GameSheet
         if (_card is not { } card) return;
         var preset = card.Entry.Preset;
         var opti = preset.IsOptiScaler();
-        ReShadePanel.IsVisible = !opti;
-        OptiPanel.IsVisible = opti;
+        var undecided = RouteUndecided(card);
+        PickRouteBox.IsVisible = undecided;
+        PickRouteText.Text = Ui.Format("Str.PickRouteBody", Path.GetFileName(card.Graphics?.Executable ?? card.Path));
+        ReShadePanel.IsVisible = !undecided && !opti;
+        OptiPanel.IsVisible = !undecided && opti;
 
         if (!opti)
         {
@@ -123,8 +128,15 @@ public partial class GameSheet
         ShowVersions(preset);
         ShowRuntime();
         ShowMochizuki();
+        // What either route would bring waits for the route.
+        if (undecided) RuntimeSection.IsVisible = MochizukiSection.IsVisible = false;
         ShowInstallLabel();
     }
+
+    /// <summary>Whether the route is this game's to pick by hand, and not picked yet: see
+    /// <see cref="Presets.RouteUndecided"/>. Install waits for it, and the pre-flight with it.</summary>
+    private static bool RouteUndecided(GameCard card) =>
+        Presets.RouteUndecided(card.Graphics, card.Entry.PresetChosen, card.InstalledVia);
 
     private void OnRouteChanged(object? sender, RoutedEventArgs e)
     {
@@ -144,7 +156,8 @@ public partial class GameSheet
 
     private void Choose(GameCard card, Preset preset)
     {
-        if (card.Entry.Preset == preset) return;
+        // The route shown by default is a choice too once it is clicked: a game whose API is unknown waits for it.
+        if (card.Entry.Preset == preset && card.Entry.PresetChosen) return;
         card.Entry.Preset = preset;
         card.Entry.PresetChosen = true;
         card.RefreshRoute();
@@ -377,6 +390,7 @@ public partial class GameSheet
             _ => family == RouteFamily.OptiScaler ? "Str.SwitchToOpti" : "Str.SwitchToReShade",
         };
         if (!InstallSpin.IsVisible) Ui.Localize(InstallLabel, key);
+        InstallButton.IsEnabled = !Session.Busy && !RouteUndecided(card);
         UninstallButton.IsVisible = card.Installed;
     }
 

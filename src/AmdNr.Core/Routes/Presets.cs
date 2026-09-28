@@ -46,6 +46,13 @@ public static class Presets
     /// so on D3D12 it replaces a route that sees only the finished frame.</summary>
     public static bool IsOptiScaler(this Preset p) => p == Preset.OptiScaler;
 
+    /// <summary>Whether a game's route is the person's to pick and nothing is picked yet: the detection could
+    /// not tell which API it renders with, so nothing recommends a route, nobody chose one, and nothing of
+    /// ours is installed there to keep. Guessing here put D3D11 into a D3D12 game (NBA 2K27), with the log
+    /// saying detection had chosen it.</summary>
+    public static bool RouteUndecided(GraphicsDetection? detection, bool chosen, RouteFamily? installed) =>
+        !chosen && installed is null && detection is { Preset: null, All.Count: 0 };
+
     public static RouteFamily Family(this Preset p) => p.IsOptiScaler() ? RouteFamily.OptiScaler : RouteFamily.ReShade;
 
     private static readonly Preset[] X86 = [Preset.X86Dx11, Preset.X86Dx9, Preset.X86Dx8];

@@ -396,4 +396,28 @@ public class GraphicsTests
         Assert.Equal(d.Executable, d.Target);
         Assert.Null(d.InstallTarget);
     }
+
+    /// <summary>NBA 2K27: an executable that imports no graphics API and nothing beside it naming one. No
+    /// route is guessed for it; the person picks, and once they have -- or once one is installed there --
+    /// it is theirs. A game whose API is known, or known to have no route, is not asked about.</summary>
+    [Fact]
+    public void AGameWhoseApiIsUnknownHasItsRoutePickedByHand()
+    {
+        var root = Fixture.Temp("gfx-unknown");
+        File.WriteAllBytes(Path.Combine(root, "NBA2K27.exe"), Fixture.PeWithImports(true, ["kernel32.dll"]));
+        var unknown = GraphicsDetector.Detect(root);
+        Assert.Empty(unknown.All);
+        Assert.Null(unknown.Preset);
+        Assert.True(Presets.RouteUndecided(unknown, chosen: false, installed: null));
+        Assert.False(Presets.RouteUndecided(unknown, chosen: true, installed: null));
+        Assert.False(Presets.RouteUndecided(unknown, chosen: false, installed: RouteFamily.OptiScaler));
+
+        var dx12 = Fixture.Temp("gfx-known");
+        File.WriteAllBytes(Path.Combine(dx12, "Game.exe"), Fixture.PeWithImports(true, ["d3d12.dll"]));
+        Assert.False(Presets.RouteUndecided(GraphicsDetector.Detect(dx12), chosen: false, installed: null));
+        var dx9 = new GraphicsDetection("Game.exe", Route.X64, GraphicsApi.D3D9, false, "a 64-bit D3D9 game");
+        Assert.Null(dx9.Preset);
+        Assert.False(Presets.RouteUndecided(dx9, chosen: false, installed: null));
+        Assert.False(Presets.RouteUndecided(null, chosen: false, installed: null));
+    }
 }

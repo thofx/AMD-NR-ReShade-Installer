@@ -191,7 +191,7 @@ public partial class GameSheet : UserControl
                                && ((card.Entry.Platform == GamePlatform.Steam && card.Entry.AppId is { Length: > 0 })
                                    || (card.Graphics?.Executable is { } exe && File.Exists(exe)));
         ReportButton.IsEnabled = !busy;
-        InstallButton.IsEnabled = !busy;
+        InstallButton.IsEnabled = !busy && !(_card is { } open && RouteUndecided(open));
         UninstallButton.IsEnabled = !busy;
         if (!busy) Progress.IsVisible = false;
     }
