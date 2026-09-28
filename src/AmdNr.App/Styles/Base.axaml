@@ -6,7 +6,7 @@
   <!-- Type scale: 11 caption, 12 small, 13 body, 15 subtitle, 20 title, 26 page. -->
   <Style Selector="Window">
     <Setter Property="Background" Value="{DynamicResource Bg}" />
-    <Setter Property="FontFamily" Value="Inter, Segoe UI, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
     <Setter Property="FontSize" Value="13" />
   </Style>
 

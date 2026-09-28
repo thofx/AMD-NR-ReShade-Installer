@@ -6,6 +6,9 @@
   <!-- The fallback language. Every other Strings.*.axaml carries the same keys; one that is missing
        falls through to whatever this file says. -->
 
+  <!-- The window font. Inter carries the Latin text; a CJK face after it carries the rest. -->
+  <FontFamily x:Key="AppFont">Inter, Segoe UI, sans-serif</FontFamily>
+
   <sys:String x:Key="Str.AppTitle">AMD-NR ReShade Installer</sys:String>
   <sys:String x:Key="Str.Subtitle">DLSS 5 neural rendering on Radeon, installed for you</sys:String>
 

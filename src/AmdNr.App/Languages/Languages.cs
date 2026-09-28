@@ -15,3 +15,13 @@ public partial class Portuguese : ResourceDictionary
 {
     public Portuguese() => AvaloniaXamlLoader.Load(this);
 }
+
+public partial class SimplifiedChinese : ResourceDictionary
+{
+    public SimplifiedChinese() => AvaloniaXamlLoader.Load(this);
+}
+
+public partial class TraditionalChinese : ResourceDictionary
+{
+    public TraditionalChinese() => AvaloniaXamlLoader.Load(this);
+}

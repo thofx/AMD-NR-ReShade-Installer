@@ -3,6 +3,9 @@
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                     x:Class="AmdNr.App.Languages.Portuguese">
 
+  <!-- The window font. Inter carries the Latin text; a CJK face after it carries the rest. -->
+  <FontFamily x:Key="AppFont">Inter, Segoe UI, sans-serif</FontFamily>
+
   <sys:String x:Key="Str.AppTitle">AMD-NR ReShade Installer</sys:String>
   <sys:String x:Key="Str.Subtitle">DLSS 5 neural rendering em Radeon, instalado pra você</sys:String>
 

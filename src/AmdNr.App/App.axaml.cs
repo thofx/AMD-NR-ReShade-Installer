@@ -16,6 +16,8 @@ public partial class App : Application
     [
         ("en", "English", () => new Languages.English()),
         ("pt-BR", "Português (Brasil)", () => new Languages.Portuguese()),
+        ("zh-CN", "简体中文", () => new Languages.SimplifiedChinese()),
+        ("zh-TW", "繁體中文", () => new Languages.TraditionalChinese()),
     ];
 
     public static string CurrentLanguage { get; private set; } = "en";
@@ -87,6 +89,11 @@ public partial class App : Application
         var culture = CultureInfo.CurrentUICulture;
         var exact = Languages.FirstOrDefault(l => l.Code.Equals(culture.Name, StringComparison.OrdinalIgnoreCase));
         if (exact.Code is not null) return exact.Code;
+
+        // zh-HK and zh-MO write Traditional, as zh-TW does, and .NET files all three under zh-Hant;
+        // the two-letter match below would hand them Simplified.
+        for (var c = culture; c.Name.Length > 0; c = c.Parent)
+            if (c.Name.Equals("zh-Hant", StringComparison.OrdinalIgnoreCase)) return "zh-TW";
 
         var language = culture.TwoLetterISOLanguageName;
         var loose = Languages.FirstOrDefault(l => l.Code.StartsWith(language, StringComparison.OrdinalIgnoreCase));
