@@ -168,7 +168,7 @@ public static partial class Work
             .Append((WeightsName, pins.WeightsSize));
 
     private static Report PreflightOptiScaler(string gameDir, string payloadDir, PayloadPins pins, string? proxy,
-        bool mochizuki, string? ownRuntime)
+        bool mochizuki, string? ownRuntime, UserRuntime? wantedRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -196,7 +196,7 @@ public static partial class Work
                 report.Ok("Every OptiScaler file is there. Installing verifies the SHA-256 of each one.");
         }
         if (mochizuki) CheckMochizukiPayload(src, pins, report);
-        CheckSupplied(ownRuntime, pins, Preset.OptiScaler, report);
+        CheckSupplied(ownRuntime, wantedRuntime, pins, Preset.OptiScaler, report);
 
         if (dir.Length == 0)
         {
@@ -250,7 +250,7 @@ public static partial class Work
     }
 
     private static Report InstallOptiScaler(string gameDir, string payloadDir, PayloadPins pins, string? proxy,
-        bool mochizuki, string? ownRuntime)
+        bool mochizuki, string? ownRuntime, UserRuntime? wantedRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -313,7 +313,7 @@ public static partial class Work
         }
         // A build the person supplied comes first; the author's version.dll goes to the backup either way.
         var author = OwnRuntime(dir, pins);
-        var own = Supplied(ownRuntime, pins, Preset.OptiScaler, report) is { } supplied
+        var own = Supplied(ownRuntime, wantedRuntime, pins, Preset.OptiScaler, report) is { } supplied
             ? (supplied.Bytes, AcceptedRuntime(supplied.Build.OriginalSha256, pins.OptiScalerVersion)!, From: SuppliedFrom)
             : author;
         if ((own?.Bytes ?? VerifiedPayload(src, pins.OptiRuntimeName, pins.OptiRuntimeSha, report)) is { } runtime)

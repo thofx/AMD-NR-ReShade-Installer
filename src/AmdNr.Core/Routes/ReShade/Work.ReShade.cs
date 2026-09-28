@@ -7,7 +7,7 @@ namespace AmdNr.Core;
 public static partial class Work
 {
     private static Report PreflightReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki, string? ownRuntime)
+        string? proxy, bool mochizuki, string? ownRuntime, UserRuntime? wantedRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -67,7 +67,7 @@ public static partial class Work
             if (allThere) report.Ok("Every payload is there and the right size. Installing verifies the SHA-256 too.");
         }
         if (mochizuki) CheckMochizukiPayload(src, pins, report);
-        CheckSupplied(ownRuntime, pins, preset, report);
+        CheckSupplied(ownRuntime, wantedRuntime, pins, preset, report);
 
         // --- the target -------------------------------------------------------------------------
         if (dir.Length == 0)
@@ -156,7 +156,7 @@ public static partial class Work
     }
 
     private static Report InstallReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki, string? ownRuntime)
+        string? proxy, bool mochizuki, string? ownRuntime, UserRuntime? wantedRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -193,7 +193,7 @@ public static partial class Work
         }
 
         var payloads = PayloadDir(src);
-        var supplied = Supplied(ownRuntime, pins, preset, report);
+        var supplied = Supplied(ownRuntime, wantedRuntime, pins, preset, report);
         foreach (var (name, want) in new[]
                  {
                      (AddonName, pins.AddonSha),

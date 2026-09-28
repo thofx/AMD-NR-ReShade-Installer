@@ -45,6 +45,8 @@ public partial class GameSheet
         var proxy = _proxy;
         var mochizuki = WantsMochizuki(card);
         var wanted = WantedRuntime(card);
+        // One offered here and not found is the check's error (NoteRuntime); anything else the engine explains.
+        var unoffered = wanted is not null && !Offered(wanted);
 
         // A result belongs to the action that produced it; a new check replaces it.
         Steps.IsVisible = false;
@@ -59,7 +61,8 @@ public partial class GameSheet
             {
                 var folder = CachedPayloadFolder(preset, mochizuki);
                 var own = wanted is null ? null : Work.FindUserRuntime(wanted, TargetFor(card));
-                return (Work.Preflight(TargetFor(card), folder ?? "", preset, pins, proxy, mochizuki, own), folder, own);
+                return (Work.Preflight(TargetFor(card), folder ?? "", preset, pins, proxy, mochizuki, own,
+                    unoffered ? wanted : null), folder, own);
             });
         }
         catch (Exception e)
@@ -135,7 +138,7 @@ public partial class GameSheet
             Status(Ui.Text("Str.Working"));
             var target = TargetFor(card);
             Report report;
-            try { report = await WritingAsync(() => Work.Install(target, folder, preset, pins, proxy, mochizuki, runtime)); }
+            try { report = await WritingAsync(() => Work.Install(target, folder, preset, pins, proxy, mochizuki, runtime, wanted)); }
             catch (Exception ex)
             {
                 // The engine turns everything it expects into a report line, and rolls back before

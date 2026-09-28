@@ -122,24 +122,26 @@ public static partial class Work
 
     /// <summary>What an install puts in place of the download's runtime when a person supplied a build: read
     /// from <paramref name="source"/> (see <see cref="UserRuntime.Read"/>), and patched for the add-on on the
-    /// ReShade routes. Null is the download's: nothing supplied, or a version that does not run that build,
-    /// which is said. A file that is not a listed build, or does not patch to its listed hash, is an error,
-    /// and nothing is written.</summary>
-    private static (UserRuntime Build, byte[] Bytes)? Supplied(string? source, PayloadPins pins, Preset preset, Report report)
+    /// ReShade routes. Null is the download's: nothing supplied, or a version that does not run that build.
+    /// Whenever a build was chosen -- <paramref name="wanted"/>, or the one the file holds -- and is not the one
+    /// that goes in, the report says why. A file that is not a listed build, or does not patch to its listed
+    /// hash, is an error, and nothing is written.</summary>
+    private static (UserRuntime Build, byte[] Bytes)? Supplied(string? source, UserRuntime? wanted, PayloadPins pins,
+        Preset preset, Report report)
     {
-        if (string.IsNullOrWhiteSpace(source)) return null;
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            if (wanted is not null)
+                report.Warn(NotUsed(wanted, "the build chosen for this game", Runs(pins, preset, wanted)
+                    ? "no copy of it is kept on this machine, and none was supplied"
+                    : NotRunBecause(wanted, pins, preset), preset));
+            return null;
+        }
         try
         {
             var (build, original) = UserRuntime.Read(source, pins.UserRuntimes);
             if (Runs(pins, preset, build)) return (build, preset.IsOptiScaler() ? original : build.Patched(original));
-            report.Warn(
-                preset.IsOptiScaler()
-                    ? $"OptiScaler {pins.OptiScalerVersion} does not run danielblnc's runtime {build.Name}, the build you supplied, so it is left out."
-                    : !build.Patchable
-                        ? $"The payload list has no patch yet for danielblnc's runtime {build.Name}, the build you supplied, "
-                          + "so the add-on cannot drive it: the runtime is the download's."
-                        : $"Add-on v{AddonVersionFor(pins, preset)} does not run danielblnc's runtime {build.Name}, the build you "
-                          + $"supplied (v{build.AddonSince} and later do), so the runtime is the download's.");
+            report.Warn(NotUsed(build, "the build you supplied", NotRunBecause(build, pins, preset), preset));
         }
         catch (InstallException e)
         {
@@ -148,10 +150,21 @@ public static partial class Work
         return null;
     }
 
-    /// <summary>What the pre-flight says about a build a person supplied.</summary>
-    private static void CheckSupplied(string? source, PayloadPins pins, Preset preset, Report report)
+    private static string NotRunBecause(UserRuntime build, PayloadPins pins, Preset preset) =>
+        preset.IsOptiScaler() ? $"OptiScaler {pins.OptiScalerVersion} does not run it"
+        : !build.Patchable ? "the payload list has no patch for it yet, so the add-on cannot drive it"
+        : $"add-on v{AddonVersionFor(pins, preset)} does not run it (v{build.AddonSince} and later do)";
+
+    private static string NotUsed(UserRuntime build, string what, string why, Preset preset) =>
+        $"danielblnc's runtime {build.Name}, {what}, is not used: {why}. "
+        + (preset.IsOptiScaler()
+            ? "The runtime is the download's instead, or a build of his already in this folder that OptiScaler runs."
+            : "The download's runtime goes in instead.");
+
+    /// <summary>What the pre-flight says about a build a person supplied or chose.</summary>
+    private static void CheckSupplied(string? source, UserRuntime? wanted, PayloadPins pins, Preset preset, Report report)
     {
-        if (Supplied(source, pins, preset, report) is { } own)
+        if (Supplied(source, wanted, pins, preset, report) is { } own)
             report.Ok($"danielblnc's runtime {own.Build.Name}, from your own file, is checked"
                       + (preset.IsOptiScaler() ? "" : " and patched for the add-on") + ": it goes in place of the download's.");
     }

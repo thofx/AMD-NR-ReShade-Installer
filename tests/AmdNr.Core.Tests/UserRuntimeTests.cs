@@ -287,7 +287,34 @@ public class UserRuntimeTests
         var report = Work.Install(game, src, Preset.Dx11, pins, ownRuntime: source);
         Assert.False(report.Failed, report.ToLog("old add-on"));
         Assert.Equal(pins.RuntimeSha, Sha(game, Work.RuntimeName));
-        Assert.Contains(report.Lines, l => l.Level == Level.Warn && l.Text.Contains("Add-on v0.6.9 does not run danielblnc's runtime 9.9.9"));
+        Assert.Contains(report.Lines, l => l.Level == Level.Warn
+            && l.Text.Contains("runtime 9.9.9, the build you supplied, is not used: add-on v0.6.9 does not run it"));
+    }
+
+    /// <summary>The build chosen for the game and no file of it found: the download goes in, and the report
+    /// says the build is not used and why, both on an add-on that does not run it and on one that does.</summary>
+    [Fact]
+    public void AChosenBuildWithNoCopyIsNotLeftOutInSilence()
+    {
+        var build = Build(Dll(14));
+        foreach (var (addon, why) in new[]
+                 {
+                     ("0.6.9", "add-on v0.6.9 does not run it (v0.7.0 and later do)"),
+                     ("0.7.0", "no copy of it is kept on this machine, and none was supplied"),
+                 })
+        {
+            var game = Fixture.Temp($"ur-unfound-{addon}");
+            var (src, pins) = Payloads($"ur-unfound-{addon}", build, addon);
+            var check = Work.Preflight(game, src, Preset.Dx11, pins, wantedRuntime: build);
+            Assert.Contains(check.Lines, l => l.Level == Level.Warn && l.Text.Contains(why));
+
+            var report = Work.Install(game, src, Preset.Dx11, pins, wantedRuntime: build);
+            Assert.False(report.Failed, report.ToLog(addon));
+            Assert.Equal(pins.RuntimeSha, Sha(game, Work.RuntimeName));
+            Assert.Contains(report.Lines, l => l.Level == Level.Warn
+                && l.Text == $"danielblnc's runtime 9.9.9, the build chosen for this game, is not used: {why}. "
+                   + "The download's runtime goes in instead.");
+        }
     }
 
     [Fact]
@@ -308,7 +335,7 @@ public class UserRuntimeTests
         var report = Work.Install(game, src, Preset.Dx11, pins, ownRuntime: source);
         Assert.False(report.Failed, report.ToLog("incomplete"));
         Assert.Equal(pins.RuntimeSha, Sha(game, Work.RuntimeName));
-        Assert.True(Fixture.HasAny(report, "no patch yet"), report.ToLog("incomplete"));
+        Assert.True(Fixture.HasAny(report, "no patch for it yet"), report.ToLog("incomplete"));
     }
 
     /// <summary>The shipped list carries 0.5.0 with its hash and size and nothing else yet: not offered on the

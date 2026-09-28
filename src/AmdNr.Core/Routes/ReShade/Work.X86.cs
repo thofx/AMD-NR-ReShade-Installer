@@ -40,7 +40,7 @@ public static partial class Work
     }
 
     private static Report InstallX86(string gameDir, string releaseDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki, string? ownRuntime)
+        string? proxy, bool mochizuki, string? ownRuntime, UserRuntime? wantedRuntime)
     {
         var report = new Report();
         if (X86Target(gameDir, report) is not { } target) return report;
@@ -74,7 +74,7 @@ public static partial class Work
             else AddMochizuki(extra, release, pins, report);
         }
         // A build the person supplied, patched, runs in the 64-bit helper in place of the release's runtime.
-        var supplied = Supplied(ownRuntime, pins, preset, report);
+        var supplied = Supplied(ownRuntime, wantedRuntime, pins, preset, report);
         if (supplied is { } own) extra[RuntimeName] = own.Bytes;
         var loader = AuthorsLoaderHere(installDir, pins);
         var recorded = MochizukiRecorded(InstalledManifest(installDir, Route.X86));

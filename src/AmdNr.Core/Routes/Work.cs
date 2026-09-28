@@ -371,19 +371,22 @@ public static partial class Work
     /// under user_runtimes (see <see cref="UserRuntime.Read"/>), to install in place of the download's
     /// runtime: patched on the ReShade routes, as it is on OptiScaler. Null is the download's -- and on
     /// OptiScaler, as before, a build of the author's already in the folder.</param>
+    /// <param name="wantedRuntime">The build chosen for the game when no file of it was found: the download
+    /// goes in, and the report says the build is not used and why.</param>
     public static Report Preflight(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false, string? ownRuntime = null) =>
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null) =>
         preset.IsOptiScaler()
-            ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime)
-            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime);
+            ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
+            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime);
 
     // -- Install ---------------------------------------------------------------------------------
 
     /// <param name="mochizuki">See <see cref="Preflight"/>.</param>
     /// <param name="ownRuntime">See <see cref="Preflight"/>.</param>
+    /// <param name="wantedRuntime">See <see cref="Preflight"/>.</param>
     public static Report Install(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false, string? ownRuntime = null) =>
-        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime)
-        : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime)
-        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime);
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null) =>
+        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
+        : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
+        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime);
 }
