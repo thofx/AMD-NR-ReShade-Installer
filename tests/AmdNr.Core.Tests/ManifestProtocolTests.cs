@@ -3,10 +3,9 @@ using AmdNr.Core;
 
 namespace AmdNr.Core.Tests;
 
-/// <summary>A manifest is validated by re-encoding it and comparing byte for byte, so anything in
-/// Encode that is fixed rather than carried orphans every manifest already on disk -- and an
-/// orphaned manifest is an install that cannot be upgraded and cannot be uninstalled. The bridge
-/// protocol number is the one field that moves, so these hold it to round-tripping.</summary>
+/// <summary>The older installers read what Encode writes, so a field Encode fixed rather than carried
+/// would rewrite what an older install recorded. The bridge protocol number is the one field that
+/// moves, so these hold it to round-tripping.</summary>
 public class ManifestProtocolTests
 {
     private static readonly string WrittenByAnOlderInstall = """

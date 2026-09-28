@@ -58,7 +58,12 @@ public static partial class Transaction
                     if (!maintained)
                     {
                         original = Engine.Read(backup);
-                        Engine.HashIs(original, entry.BackupHash, "Original backup");
+                        // Damaged since: nothing to put back, and not a reason to stop the install.
+                        if (Engine.Sha(original) != entry.BackupHash)
+                        {
+                            log.Add($"WARNING {name}: {NoBackup}");
+                            original = null;
+                        }
                     }
                     spent.Add(backup);
                 }

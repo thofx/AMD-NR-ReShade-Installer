@@ -151,17 +151,54 @@ public class EngineTests
         // The configuration flag has to agree with the filename.
         Assert.Throws<InstallException>(() => Manifest.Decode(CapturedManifest()
             .Replace("\"owned\":false,\"configuration\":false", "\"owned\":false,\"configuration\":true")));
-        // Any reformatting at all breaks the byte-for-byte round trip.
-        Assert.Throws<InstallException>(() => Manifest.Decode(CapturedManifest()
-            .Replace("\"schema\":1,", "\"schema\": 1,")));
+        // Not JSON any more, or a field of the wrong kind.
+        Assert.Throws<InstallException>(() => Manifest.Decode(CapturedManifest()[..^10]));
+        Assert.Throws<InstallException>(() => Manifest.Decode(CapturedManifest().Replace("\"owned\":true", "\"owned\":\"yes\"")));
+        Assert.Throws<InstallException>(() => Manifest.Decode(CapturedManifest().Replace("\"schema\":1", "\"schema\":2")));
     }
 
-    /// <summary>Recorded because the C++ behaves this way: owned and the recorded hash are
-    /// re-encoded faithfully, so editing either still round-trips. This is the edge of what the
-    /// manifest check proves; the blast radius is bounded by Allowed and by uninstall re-hashing
-    /// the target before acting.</summary>
+    /// <summary>The same record in another layout is the same record. Need for Speed had its manifest
+    /// rewritten compact, with no trailing newline, and every install and uninstall there failed with
+    /// "Modified or unsupported install manifest" -- for a file that said exactly what it always had.</summary>
     [Fact]
-    public void TheRoundTripCheckDoesNotConstrainOwnedOrTheRecordedHash()
+    public void AManifestInAnotherLayoutStillReads()
+    {
+        var captured = Manifest.Decode(CapturedManifest());
+        var compact = System.Text.Json.JsonSerializer.Serialize(System.Text.Json.JsonDocument.Parse(CapturedManifest()).RootElement);
+        var pretty = (char)0xFEFF + System.Text.Json.JsonSerializer.Serialize(System.Text.Json.JsonDocument.Parse(CapturedManifest()).RootElement,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).ReplaceLineEndings("\r\n");
+        foreach (var text in new[] { compact, pretty, CapturedManifest().Replace("\"schema\":1,", "\"schema\": 1,") })
+        {
+            var m = Manifest.Decode(text);
+            Assert.Equal(captured, m);
+            // Written back in the one layout the older installers read.
+            Assert.Equal(CapturedManifest(), Manifest.Encode(m));
+        }
+    }
+
+    /// <summary>Need for Speed's record, word for word as it was found on 28/09: compact, no newline at the
+    /// end. Its install and its uninstall both failed on it.</summary>
+    [Fact]
+    public void TheRecordNeedForSpeedWasLeftWithReads()
+    {
+        const string nfs = """
+            {"schema":1,"preset":"D3D11","state":"installed","route":"x64","bridge_protocol":3,"dgVoodoo":"none","ReShade":"6.8.0.2156 Full Add-on Support","files":[
+            {"name":"ReShade.ini","sha256":"633b85a3e5d14f8dc713540c7579bf897ee3d87c86e93ba47e61f08901d8845d","backup":".amd-nr-x86bridge-backups/1790221974521910300/ReShade.ini","backup_sha256":"2ce66fb2fccfc0c78f7cc6a7ab67cb95b3a825a90d827826d4dcfac464e7fc1e","owned":true,"configuration":true},
+            {"name":"amd-nr.addon64","sha256":"e526f9d7ed0ed3e20494131c6c13013c24788fe6f18f04f6818b1fffae746caa","backup":"","backup_sha256":"","owned":true,"configuration":false},
+            {"name":"dxgi.dll","sha256":"0cee63f9c9f13f3ac909c5b4903f4dbb4b719a7ab3b4f13b0deaf83c814b94f7","backup":"","backup_sha256":"","owned":true,"configuration":false},
+            {"name":"reshade-shaders/Shaders/AMD_Neural_Feed.fx","sha256":"9f53875221c130903bdd205d15011a924ab0f1c0c85b17191e4f39b140e7848e","backup":"","backup_sha256":"","owned":true,"configuration":false}]}
+            """;
+        var m = Manifest.Decode(nfs.ReplaceLineEndings("\n"));
+        Assert.Equal(("D3D11", Route.X64, 4), (m.Preset, m.Route, m.Entries.Count));
+        Assert.Equal(".amd-nr-x86bridge-backups/1790221974521910300/ReShade.ini", m.Entries[0].Backup);
+        Assert.True(m.Entries[0].Configuration && m.Entries.All(e => e.Owned));
+    }
+
+    /// <summary>Owned and the recorded hash are data, and editing either still decodes. This is the
+    /// edge of what the manifest check proves; the blast radius is bounded by Allowed and by uninstall
+    /// re-hashing the target before acting.</summary>
+    [Fact]
+    public void TheManifestCheckDoesNotConstrainOwnedOrTheRecordedHash()
     {
         var flipped = CapturedManifest()
             .Replace("\"owned\":false,\"configuration\":false", "\"owned\":true,\"configuration\":false");

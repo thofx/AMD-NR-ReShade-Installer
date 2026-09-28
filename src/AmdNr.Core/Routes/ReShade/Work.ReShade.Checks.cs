@@ -281,7 +281,8 @@ public static partial class Work
 
     /// <summary>ReShade writes DisabledAddons= into its own ini the first time anyone unticks an
     /// add-on, and from then on it never loads it again and says nothing anywhere. It is the one
-    /// failure in this project that looks exactly like a broken install.</summary>
+    /// failure in this project that looks exactly like a broken install -- and every route's install
+    /// takes this add-on off the list (<see cref="ReadyReShadeIni"/>), so it is said, not refused.</summary>
     private static void CheckDisabledAddons(string dir, Report report)
     {
         var ini = Path.Combine(dir, "ReShade.ini");
@@ -297,10 +298,9 @@ public static partial class Work
             if (list.Contains(AddonName, StringComparison.Ordinal)
                 || IsOurs(list))
             {
-                report.Err(
-                    "ReShade.ini has this add-on in DisabledAddons=. ReShade writes that line if the "
-                    + "add-on is ever unticked, and then it never loads it again, with no error anywhere. "
-                    + "Clear that line before blaming the install.");
+                report.Info(
+                    "ReShade.ini has this add-on in DisabledAddons=, so ReShade would never load it. "
+                    + "The install takes it off that list and leaves the other add-ons as they are.");
             }
             else if (list.Length > 0)
             {
@@ -334,7 +334,7 @@ public static partial class Work
         // Only the game's own files, never the database: the question is what this copy links.
         var local = GraphicsDetector.Detect(dir);
         if (local.Api == GraphicsApi.Unknown || local.All.Count == 0) return;
-        if (local.All.Contains(wanted)) return;
+        if (GraphicsDetection.Reachable(wanted, local.All)) return;
 
         var found = string.Join(", ", local.All.Select(GraphicsDetection.Short));
         report.Warn(

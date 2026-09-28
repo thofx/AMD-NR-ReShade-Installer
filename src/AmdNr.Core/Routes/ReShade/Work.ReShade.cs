@@ -92,8 +92,8 @@ public static partial class Work
         // the copy come back with "access denied" halfway through.
         var route = preset.Route() == Route.X86 ? Route.X86 : Route.X64;
         var retiring = !mochizuki && MochizukiRecorded(InstalledManifest(dir, route)).Count > 0;
-        var loader = CheckAuthorsRuntime(dir, pins, preset, report);
-        var held = new[] { AddonName, RuntimeName, WeightsName }.Concat(loader ? [AuthorRuntimeName] : [])
+        var moves = CheckAuthorsRuntime(dir, pins, preset, report);
+        var held = new[] { AddonName, RuntimeName, WeightsName }.Concat(moves)
             .Where(n => Engine.IsLocked(Path.Combine(dir, n)))
             .Concat(mochizuki || retiring ? MochizukiHeld(dir) : []).ToList();
         if (held.Count > 0)
@@ -178,7 +178,7 @@ public static partial class Work
         if (src.Length == 0 || !File.Exists(Path.Combine(PayloadDir(src), "ReShade64.dll")) || preset.IsVulkan())
             CheckReShade(dir, preset, report);
         CheckDoubleReShade(dir, preset, report, ReShadeProxyFor(preset, dir, proxy), ShippedReShade(src, preset));
-        var loader = CheckAuthorsRuntime(dir, pins, preset, report);
+        var moves = CheckAuthorsRuntime(dir, pins, preset, report);
 
         var files = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
         if (src.Length == 0)
@@ -221,16 +221,23 @@ public static partial class Work
 
         // ReShade itself, when the payload carries it: the add-on does nothing without it, and asking
         // someone to run a second installer and pick the right API is the step people get wrong.
+        var shipsReShade = false;
         if (File.Exists(Path.Combine(payloads, "ReShade64.dll"))
             && ReShadeProxyFor(preset, dir, proxy) is { } proxyName
             && VerifiedPayload(payloads, "ReShade64.dll", pins.ReShade64Sha, report) is { } reShade)
         {
             files[proxyName] = reShade;
-            var iniPath = Path.Combine(dir, "ReShade.ini");
+            shipsReShade = true;
+            report.Info($"ReShade 6.8.0 with full add-on support goes in as {proxyName}.");
+        }
+        // A ReShade.ini already here is readied too, whoever installed ReShade: one that lists this add-on
+        // under DisabledAddons never loads it, and the pre-flight says the install takes it off.
+        var iniPath = Path.Combine(dir, "ReShade.ini");
+        if (shipsReShade || File.Exists(iniPath))
+        {
             var before = File.Exists(iniPath) ? File.ReadAllText(iniPath) : "";
             var after = ReadyReShadeIni(before);
             if (after != before) files["ReShade.ini"] = System.Text.Encoding.UTF8.GetBytes(after);
-            report.Info($"ReShade 6.8.0 with full add-on support goes in as {proxyName}.");
         }
 
         if (mochizuki)
@@ -253,7 +260,7 @@ public static partial class Work
         var log = new List<string>();
         try
         {
-            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log, recorded, loader ? [AuthorRuntimeName] : null);
+            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log, recorded, moves);
             foreach (var line in log) Narrate(line, report);
         }
         catch (InstallException e)

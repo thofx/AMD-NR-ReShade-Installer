@@ -248,10 +248,10 @@ public partial class GameSheet
     private async Task<Report> RunUninstallAsync(GameCard card, Preset preset, bool removeConfig)
     {
         var target = TargetFor(card);
-        // The ReShade this payload pins, besides the builds the engine knows: a ReShade copied in by
-        // hand is taken out only when it is one of those.
+        // The ReShade and mochizuki builds this payload pins, besides the ones the engine knows: either,
+        // copied in by hand, is taken out only when it is one of those.
         var pins = Pins();
-        var pinned = new[] { pins.ReShade64Sha, pins.ReShade32Sha, pins.D3d8To9Sha };
+        var pinned = new[] { pins.ReShade64Sha, pins.ReShade32Sha, pins.D3d8To9Sha }.Concat(pins.MochizukiFiles.Values).ToArray();
         Report report;
         try { report = await WritingAsync(() => Work.Uninstall(target, preset, removeConfig, pinned)); }
         catch (Exception ex) { report = Failure(ex); }

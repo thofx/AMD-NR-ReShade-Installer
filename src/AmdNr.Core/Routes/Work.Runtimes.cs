@@ -99,10 +99,11 @@ public static partial class Work
             return;
         }
         if (!KnownRuntimePrefixes.Any(p => sha.StartsWith(p, StringComparison.Ordinal))) return;
-        report.Err(
+        report.Info(
             "version.dll here is the DLSS-NR-on-AMD runtime itself, loaded the way its author's setup "
             + $"loads it, in a build OptiScaler {pins.OptiScalerVersion} does not run. Beside OptiScaler it "
-            + "would be two drivers on one runtime. Move version.dll out of this folder and run this again.");
+            + "would be two drivers on one runtime, so version.dll goes to the backup, the download's runtime "
+            + "goes in, and uninstall puts version.dll back.");
     }
 
     // -- Builds a person supplies ------------------------------------------------------------------
@@ -231,8 +232,12 @@ public static partial class Work
     /// so the pre-flight stays cheap.</summary>
     private static List<(string Name, string Sha)> AuthorsRuntimesHere(string dir, PayloadPins pins)
     {
-        var ours = OptiPasses.Concat(DeadFiles()).Append(LmxxfRuntimeName).Append(MochizukiRuntimeName)
+        // Ours by name: what an install writes and the copies the add-on makes of it, one per pass.
+        var ours = OptiPasses.Concat(DeadFiles()).Concat(RuntimeCopies).Append(LmxxfRuntimeName).Append(MochizukiRuntimeName)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // And ours by content, under any name: a build patched for the add-on is one his setups never load.
+        var patched = new HashSet<string>([Engine.RuntimeSha, pins.RuntimeSha, .. pins.UserRuntimes.Select(b => b.PatchedSha256)],
+            StringComparer.OrdinalIgnoreCase);
         var found = new List<(string Name, string Sha)>();
         foreach (var path in TopLevelDlls(dir))
         {
@@ -240,7 +245,7 @@ public static partial class Work
             if (ours.Contains(name) || Engine.SizeOf(path) is not { } size
                 || !(size is > 7_000_000 and < 40_000_000 || pins.UserRuntimes.Any(b => b.OriginalSize == size)))
                 continue;
-            if (PayloadCache.HashOf(path) is { } sha
+            if (PayloadCache.HashOf(path) is { } sha && !patched.Contains(sha)
                 && (KnownRuntimePrefixes.Any(p => sha.StartsWith(p, StringComparison.Ordinal))
                     || AcceptedRuntimes.Any(r => r.Sha == sha) || pins.UserRuntimes.Any(b => b.OriginalSha256 == sha)))
                 found.Add((name, sha));
@@ -289,40 +294,39 @@ public static partial class Work
             .Where(n => n != "dlssnr_on_amd.ini" || !File.Exists(Path.Combine(dir, RuntimeName)))
             .ToList();
 
-    /// <summary>What danielblnc's runtime in this folder means for an install, in the report; true when it is
-    /// his version.dll, which the ReShade routes move to the backup. Loaded under another name, by a loader
-    /// this app did not put there, neither file is this app's to move: that stops a ReShade install, since his
-    /// runtime hooks the same DXGI and D3D12 calls ReShade does and the two together can keep the game from
-    /// starting, and OptiScaler is told. His setup's files with none of his runtime found are a warning.</summary>
-    private static bool CheckAuthorsRuntime(string dir, PayloadPins pins, Preset preset, Report report)
+    /// <summary>What danielblnc's runtime in this folder means for an install, in the report, and the files the
+    /// install moves to the backup for it -- every one of them, on every route: his version.dll, and his runtime
+    /// under any other name a loader gives it. Beside the add-on or OptiScaler it would be two drivers on one
+    /// runtime, and beside ReShade it hooks the same DXGI and D3D12 calls, which can keep the game from starting.
+    /// Uninstall puts each back. A loader that names it stays where it is: it may load other mods too, and with
+    /// the runtime gone it has nothing of his to load. Stopping the install here instead -- "remove his setup
+    /// first" -- was a red line on a folder the install could put right itself (NBA 2K27).</summary>
+    private static List<string> CheckAuthorsRuntime(string dir, PayloadPins pins, Preset preset, Report report)
     {
         var found = AuthorsRuntimesHere(dir, pins);
+        var host = preset.IsOptiScaler() ? "OptiScaler" : "ReShade and the add-on";
         foreach (var (name, sha) in found.Where(f => !f.Name.Equals(AuthorRuntimeName, StringComparison.OrdinalIgnoreCase)))
         {
             var by = LoaderOf(dir, name);
-            var here = $"danielblnc's standalone runtime{BuildOf(sha, pins)} is loaded here "
-                       + (by is null ? $"as {name}, by something this app did not install" : $"by {by}, as {name}");
             var pick = pins.UserRuntimes.FirstOrDefault(b => b.OriginalSha256 == sha) is { } build
-                ? $" {name} is his {build.Name} supporter build: pick it as your supporter files in this app before you "
-                  + "remove his setup, and it can go in as the runtime."
+                ? $" It is his {build.Name} supporter build: pick it as your supporter files in this app and it goes in as the runtime."
                 : "";
-            if (preset.IsOptiScaler())
-                report.Warn($"{here}. Beside OptiScaler that is two drivers on one runtime, and OptiScaler takes his runtime "
-                            + "only as version.dll. Remove his setup from this folder with his own setup or uninstaller." + pick);
-            else
-                report.Err($"{here}. It hooks the same DXGI and D3D12 calls ReShade does, and the two together can keep "
-                           + "the game from starting. Neither file is this app's, so neither is touched: remove his setup "
-                           + "from this folder with his own setup or uninstaller, or install the OptiScaler route instead." + pick);
+            report.Info($"danielblnc's standalone runtime{BuildOf(sha, pins)} is loaded here as {name}"
+                        + (by is null ? "" : $", by {by}")
+                        + $". Beside {host} that would be two drivers on one runtime, and it can keep the game from starting, "
+                        + $"so the install moves {name} to the backup"
+                        + (by is null ? "" : $" ({by} stays, with nothing of his left to load)")
+                        + ", and uninstall puts it back." + pick);
         }
-        if (preset.IsOptiScaler()) return false;
-        var loader = found.Any(f => f.Name.Equals(AuthorRuntimeName, StringComparison.OrdinalIgnoreCase));
-        if (loader) report.Info(AuthorsLoaderMoves);
+        var moves = found.Select(f => f.Name).ToList();
+        if (preset.IsOptiScaler()) return moves;
+        if (moves.Contains(AuthorRuntimeName, StringComparer.OrdinalIgnoreCase)) report.Info(AuthorsLoaderMoves);
         else if (found.Count == 0 && AuthorsSetupHere(dir) is { Count: > 0 } setup)
             report.Warn(
                 $"{Joined(setup)} {(setup.Count == 1 ? "is" : "are")} here: danielblnc's own setup has been in this folder. "
                 + "None of his runtime was found loaded here, so this goes on; if the game does not start with ReShade, "
                 + "remove his setup with his own setup or uninstaller.");
-        return loader;
+        return moves;
     }
 
     /// <summary>" 0.5.0" when the build is one this project can name, and nothing otherwise.</summary>

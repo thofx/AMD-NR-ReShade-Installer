@@ -40,10 +40,11 @@ public static partial class Work
             StringComparer.OrdinalIgnoreCase);
         var proxies = Proxies.Append("d3d8R.dll").ToArray();
         var recorded = Manifests(dir, migrate: true);
-        // The weights beside the author's version.dll, there now or coming back from the backup, are
-        // his runtime's.
+        // The weights beside the author's runtime, there now or coming back from the backup under any name
+        // (an entry of no bytes is a file an install moved out), are his runtime's.
         var authors = File.Exists(Path.Combine(dir, AuthorRuntimeName))
-                      || recorded.Any(m => m.Entries.Any(e => e.Name == AuthorRuntimeName && e.Backup.Length > 0));
+                      || recorded.Any(m => m.Entries.Any(e => e.Backup.Length > 0
+                                                              && (e.Name == AuthorRuntimeName || e.Hash == Engine.Sha([]))));
         // A file the runtime rewrites on its own (the mochizuki prewarm list) is changed by design,
         // and still this app's.
         bool Ours(string name, string sha) => (OurNames.Contains(name) && !(authors && name == WeightsName))
@@ -52,7 +53,10 @@ public static partial class Work
 
         var gone = 0;
         var opti = preset.IsOptiScaler() || recorded.Any(m => m.Preset == Preset.OptiScaler.ManifestPreset());
-        foreach (var route in recorded.Select(m => m.Route))
+        // A record this build cannot read has nothing to undo by: everything of ours goes by name below,
+        // and the record is set aside after, so it stops blocking every install and uninstall after this.
+        var unreadable = recorded.Where(m => m.Preset.Length == 0).Select(m => m.Route).ToList();
+        foreach (var route in recorded.Where(m => m.Preset.Length > 0).Select(m => m.Route))
         {
             var log = new List<string>();
             try
@@ -83,6 +87,8 @@ public static partial class Work
             foreach (var name in OurSettings.Where(n => !still.Contains(n))) gone += RemoveFile(dir, name, report);
 
         gone += SweepDroppings(dir, report);
+        gone += RemovePinnedMochizuki(dir, builds, still, report);
+        foreach (var route in unreadable) gone += SetAside(dir, route, report);
         PruneEmpty(dir, [Engine.BackupDir, Engine.LegacyBackupDir, ShaderFolder, "reshade-shaders"], report);
         AfterMochizukiUninstall(dir, report);
         if (opti) AfterOptiScalerUninstall(dir, recorded.Count > 0, report);
@@ -93,6 +99,85 @@ public static partial class Work
         if (proxies.Any(n => File.Exists(Path.Combine(dir, n)) && Identify(Path.Combine(dir, n)).IsReShade))
             report.Info("A ReShade this app did not install was left alone. Use its own installer to remove it.");
         return report;
+    }
+
+    /// <summary>Moves a record this build cannot read out of the way, kept beside it under
+    /// <c>.unreadable</c> for whoever wants to see it. Everything of ours has gone by name by now.</summary>
+    private static int SetAside(string dir, Route route, Report report)
+    {
+        var name = route.ManifestFileName();
+        var path = Path.Combine(dir, name);
+        string why;
+        try
+        {
+            Manifest.Decode(Encoding.UTF8.GetString(Engine.Read(path)));
+            return 0;
+        }
+        catch (InstallException e) { why = e.Message; }
+        try
+        {
+            File.Move(path, path + ".unreadable", overwrite: true);
+            report.Warn($"{name} could not be read ({why}), so everything of this app's came out by name instead. "
+                        + $"It is kept as {name}.unreadable; a backup it pointed to stays in {Engine.BackupDir}.");
+            return 1;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            report.Err($"{name} could not be read ({why}), and could not be moved aside: {e.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>What stops an install here that the install can clear by itself, in words, or null. A
+    /// record this build cannot read, one an install was cut off in the middle of, or another preset of
+    /// the same route family: each used to fail the install, and send the person to Uninstall first --
+    /// which, for the first, failed too. The other family is the sheet's to ask about, since that takes
+    /// ReShade out or puts it in.</summary>
+    internal static string? InTheWay(string dir, Preset preset)
+    {
+        foreach (var route in new[] { Route.X64, Route.X86 })
+        {
+            var path = Path.Combine(dir, route.ManifestFileName());
+            if (!File.Exists(path)) continue;
+            Manifest m;
+            try { m = Manifest.Decode(Encoding.UTF8.GetString(Engine.Read(path))); }
+            catch (InstallException e) { return $"The install record here ({route.ManifestFileName()}) cannot be read: {e.Message}."; }
+            if (m.State != "installed") return "An earlier install here was cut off before it finished.";
+            if (route != preset.Route() || m.Preset == preset.ManifestPreset()
+                || (m.Preset == Preset.OptiScaler.ManifestPreset()) != preset.IsOptiScaler()) continue;
+            if (m.Entries.Any(e => e.Owned && !e.Configuration && File.Exists(Path.Combine(dir, e.Name))))
+                return $"This folder has the {m.Preset} install, and this one is {preset.ManifestPreset()}.";
+        }
+        return null;
+    }
+
+    /// <summary>What an install says it does about <see cref="InTheWay"/>.</summary>
+    internal const string ClearsTheWay = "The install takes out what is this app's first, keeping your settings, and then goes in fresh.";
+
+    /// <summary>Clears what <see cref="InTheWay"/> names, the way Uninstall would, keeping the settings.
+    /// Null when nothing is in the way, or the folder cannot be found: the route says that itself.</summary>
+    private static Report? ClearTheWay(string gameDir, Preset preset, PayloadPins pins)
+    {
+        string? dir;
+        try { dir = InstallFolder(gameDir, preset); }
+        catch (InstallException) { return null; }
+        if (dir is null || InTheWay(dir, preset) is not { } why) return null;
+        var report = new Report();
+        report.Info($"{why} {ClearsTheWay}");
+        report.Append(Uninstall(dir, preset, removeConfig: false, [pins.ReShade64Sha, pins.ReShade32Sha, pins.D3d8To9Sha, .. pins.MochizukiFiles.Values]));
+        return report;
+    }
+
+    /// <summary>Where a route writes: beside the executable, or where ReShade.ini's BasePath points on
+    /// the 32-bit route. Null when that is not known yet.</summary>
+    private static string? InstallFolder(string gameDir, Preset preset)
+    {
+        if (preset.Route() != Route.X86)
+        {
+            var dir = ResolveSource(gameDir);
+            return Directory.Exists(dir) ? dir : null;
+        }
+        return X86Target(gameDir, new Report()) is { } target ? Engine.InstallDirectory(target) : null;
     }
 
     /// <summary>The settings files an uninstall left in the folder: what a manifest still records as
@@ -180,9 +265,15 @@ public static partial class Work
         }
     }
 
+    /// <summary>The runtime copies the add-on writes beside the game, one per pass (neural.cpp's LoadExtraRuntime,
+    /// and pass 1 re-pointed at a private D3D12): up to three, and some room above that. The 32-bit bridge's
+    /// helper writes the same ones beside itself. Left behind they were read as danielblnc's standalone
+    /// runtime loaded by something else, and stopped the next ReShade install (Rollout, 28/09).</summary>
+    internal static readonly string[] RuntimeCopies = [.. Enumerable.Range(1, 9).Select(n => $"amd-nr-pass{n}.dll")];
+
     internal static readonly string[] Droppings =
     [
-        "amd-nr-pass1.dll", "amd-nr.log", "amd-nr-x86.log",
+        .. RuntimeCopies, "amd-nr.log", "amd-nr-x86.log",
         "amd-nr-x86-host.log", "dlssnr_on_amd.log", "dlssnr_on_amd.ini",
         // What OptiScaler and its bridge into the runtime write while a game runs.
         "OptiScaler.log", "amd_bridge.log", "amd_presr.log",
@@ -215,6 +306,28 @@ public static partial class Work
             {
                 report.Err($"could not remove {folder}: {e.Message}");
             }
+        }
+        return gone;
+    }
+
+    /// <summary>The mochizuki runtime and its dlssnr-amd tree when nothing recorded them -- copied in by hand,
+    /// or left by a record this build could not read -- taken the way a ReShade is: when the runtime is a build
+    /// this app pins, the files that hash to one, and the prewarm list it rewrites. Not with OptiScaler here,
+    /// whose package ships the very same files.</summary>
+    private static int RemovePinnedMochizuki(string dir, HashSet<string> builds, HashSet<string> still, Report report)
+    {
+        var runtime = Path.Combine(dir, MochizukiRuntimeName);
+        if (still.Contains(MochizukiRuntimeName) || File.Exists(Path.Combine(dir, OptiScalerIni))
+            || !File.Exists(runtime) || !builds.Contains(Engine.HashFile(runtime))) return 0;
+        var gone = RemoveFile(dir, MochizukiRuntimeName, report);
+        var root = Path.Combine(dir, Engine.MochizukiFolder);
+        if (!Directory.Exists(root)) return gone;
+        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).ToList())
+        {
+            var name = Path.GetRelativePath(dir, file).Replace(Path.DirectorySeparatorChar, '/');
+            if (!still.Contains(name) && Engine.IsAllowed(name)
+                && (Engine.IsRuntimeMaintained(name) || builds.Contains(Engine.HashFile(file))))
+                gone += RemoveFile(dir, name, report);
         }
         return gone;
     }

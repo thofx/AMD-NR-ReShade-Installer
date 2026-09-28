@@ -43,6 +43,27 @@ public class PreflightTests
             report.ToLog("missing"));
     }
 
+    /// <summary>Need for Speed (2016): NFS16.exe imports d3d12.dll and renders D3D11, and the D3D11 route was
+    /// told its renderer was not in this build. D3D11 and D3D12 come through the same DXGI; a different API
+    /// altogether -- Half-Life's opengl32 under a D3D9 route -- is still said.</summary>
+    [Fact]
+    public void ALinkedD3D12IsNoEvidenceAgainstD3D11()
+    {
+        var (src, pins) = Fixture.Payloads("reachable");
+        foreach (var (imports, preset, warned) in new[]
+                 {
+                     ("d3d12.dll", Preset.Dx11, false), ("d3d11.dll", Preset.Dx12, false),
+                     ("opengl32.dll", Preset.Dx11, true), ("opengl32.dll", Preset.X86Dx9, true),
+                 })
+        {
+            var game = Fixture.Temp("reachable");
+            var x86 = preset.Route() == Route.X86;
+            File.WriteAllBytes(Path.Combine(game, "Game.exe"), Fixture.PeWithImports(!x86, ["KERNEL32.dll", imports]));
+            var report = Work.Preflight(game, src, preset, pins);
+            Assert.True(warned == Fixture.HasAny(report, "This route needs"), report.ToLog($"{imports} under {preset}"));
+        }
+    }
+
     [Fact]
     public void PreflightFindsTheDisabledAddonsLine()
     {
@@ -52,9 +73,15 @@ public class PreflightTests
         File.WriteAllText(Path.Combine(game, "ReShade.ini"),
             "[ADDON]\nDisabledAddons=dlss5 neural@amd-nr.addon64\n");
 
+        // Said, not refused: the install takes it off the list.
         var report = Work.Preflight(game, src, Preset.Dx11, pins);
-        Assert.True(report.Failed);
-        Assert.True(Fixture.HasErr(report, "DisabledAddons"), report.ToLog("ini"));
+        Assert.False(Fixture.HasErr(report, "DisabledAddons"), report.ToLog("ini"));
+        Assert.True(Fixture.HasAny(report, "takes it off that list"), report.ToLog("ini"));
+        var installed = Work.Install(game, src, Preset.Dx11, pins);
+        Assert.False(installed.Failed, installed.ToLog("install"));
+        Assert.DoesNotContain("amd-nr.addon64", Engine.GetIni(File.ReadAllText(Path.Combine(game, "ReShade.ini")), "ADDON", "DisabledAddons"),
+            StringComparison.Ordinal);
+        Work.Uninstall(game, Preset.Dx11, removeConfig: true);
 
         File.WriteAllText(Path.Combine(game, "ReShade.ini"), "[ADDON]\nDisabledAddons=SomethingElse.addon64\n");
         var clean = Work.Preflight(game, src, Preset.Dx11, pins);

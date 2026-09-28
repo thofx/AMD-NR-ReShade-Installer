@@ -110,13 +110,19 @@ public static partial class Work
         m is not null && m.Preset != Preset.OptiScaler.ManifestPreset()
         && m.Entries.Any(e => e.Owned && !e.Configuration && File.Exists(Path.Combine(dir, e.Name)));
 
-    private static void CheckOptiInTheWay(string dir, string proxyName, Manifest? m, Report report)
+    /// <param name="preflight">Said before Install is pressed: the sheet asks to switch and takes the ReShade
+    /// route out first, so there it is what Install does, not a problem.</param>
+    private static void CheckOptiInTheWay(string dir, string proxyName, Manifest? m, Report report, bool preflight = false)
     {
         if (OtherRouteInstalled(m, dir))
         {
-            report.Err(
-                $"This folder has the {m!.Preset} ReShade route installed. The two routes are alternatives: "
-                + "uninstall that one here first, then install this.");
+            if (preflight)
+                report.Info($"This folder has the {m!.Preset} ReShade route installed. The two routes are alternatives: "
+                            + "Install asks, then takes that one out before this goes in.");
+            else
+                report.Err(
+                    $"This folder has the {m!.Preset} ReShade route installed. The two routes are alternatives: "
+                    + "uninstall that one here first, then install this.");
             return;
         }
 
@@ -216,8 +222,7 @@ public static partial class Work
         var proxyName = OptiProxyFor(proxy);
         var manifest = InstalledManifest(dir);
         var retiring = !mochizuki && MochizukiRecorded(manifest).Count > 0;
-        var displacing = OwnRuntime(dir, pins)?.From == AuthorRuntimeName;
-        var held = new[] { proxyName, WeightsName }.Concat(OptiPasses).Concat(displacing ? [AuthorRuntimeName] : [])
+        var held = new[] { proxyName, WeightsName }.Concat(OptiPasses).Concat(AuthorsRuntimesHere(dir, pins).Select(f => f.Name))
             .Where(n => Engine.IsLocked(Path.Combine(dir, n)))
             .Concat(mochizuki || retiring ? MochizukiHeld(dir) : []).ToList();
         if (held.Count > 0)
@@ -235,7 +240,7 @@ public static partial class Work
                 report.Err($"Not enough room: {free / 1_048_576} MB free, and this needs {need / 1_048_576} MB.");
         }
 
-        CheckOptiInTheWay(dir, proxyName, manifest, report);
+        CheckOptiInTheWay(dir, proxyName, manifest, report, preflight: true);
         CheckRuntimeAsVersionDll(dir, pins, report);
         CheckAuthorsRuntime(dir, pins, Preset.OptiScaler, report);
         CheckUpscaler(dir, report);
@@ -291,7 +296,7 @@ public static partial class Work
         var manifest = InstalledManifest(dir);
         CheckOptiInTheWay(dir, proxyName, manifest, report);
         CheckRuntimeAsVersionDll(dir, pins, report);
-        CheckAuthorsRuntime(dir, pins, Preset.OptiScaler, report);
+        var moves = CheckAuthorsRuntime(dir, pins, Preset.OptiScaler, report);
         if (report.Failed)
         {
             report.Info("Nothing was written: fix the problem above and run it again.");
@@ -337,8 +342,7 @@ public static partial class Work
         var log = new List<string>();
         try
         {
-            Transaction.Apply(dir, Preset.OptiScaler.ManifestPreset(), Route.X64, files, log, recorded,
-                author?.From == AuthorRuntimeName ? [AuthorRuntimeName] : null);
+            Transaction.Apply(dir, Preset.OptiScaler.ManifestPreset(), Route.X64, files, log, recorded, moves);
             foreach (var line in log) Narrate(line, report);
         }
         catch (InstallException e)

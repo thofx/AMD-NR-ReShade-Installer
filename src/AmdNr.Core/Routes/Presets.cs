@@ -212,6 +212,13 @@ public sealed class Report
         Failed = true;
     }
 
+    /// <summary>Another report's lines after these, and its failure with them.</summary>
+    public void Append(Report other)
+    {
+        Lines.AddRange(other.Lines);
+        Failed |= other.Failed;
+    }
+
     /// <summary>The report as a file, for the user to hand over when something went wrong.
     /// Everything the installer saw is in here; there is nothing it knows that this does not say.</summary>
     public string ToLog(string header)

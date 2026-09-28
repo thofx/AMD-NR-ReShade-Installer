@@ -193,7 +193,11 @@ public class OptiScalerRouteTests
         Assert.False(Work.Install(game, reshadeSrc, Preset.Dx12, reshadePins).Failed);
         var (src, pins) = Payloads("other-route");
 
-        Assert.True(Work.Preflight(game, src, Preset.OptiScaler, pins).Failed);
+        // Before Install it is what Install does -- the sheet asks and takes the other route out first --
+        // and not a problem; the engine alone still refuses to put one route over the other.
+        var pre = Work.Preflight(game, src, Preset.OptiScaler, pins);
+        Assert.False(pre.Failed, pre.ToLog("pre"));
+        Assert.True(Fixture.HasAny(pre, "Install asks, then takes that one out"), pre.ToLog("pre"));
         var report = Work.Install(game, src, Preset.OptiScaler, pins);
         Assert.True(Fixture.HasErr(report, "ReShade route installed"), report.ToLog("install"));
         Assert.False(File.Exists(Path.Combine(game, "dlssnr_amd_pass2.dll")));

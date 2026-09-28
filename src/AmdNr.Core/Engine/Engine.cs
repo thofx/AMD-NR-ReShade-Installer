@@ -238,6 +238,14 @@ public static partial class Engine
                                       && file.EndsWith(".hlsl", StringComparison.Ordinal);
     }
 
+    /// <summary>A DLL directly in the game folder, under any name. Somebody else's file an install moves to
+    /// the backup is recorded under its own name -- danielblnc's standalone runtime, which a loader can load
+    /// as anything -- and such an entry can only ever be put back, never removed: it records a file of no
+    /// bytes (see Transaction.Apply's displace), so uninstall deletes nothing under that name.</summary>
+    public static bool IsPlainDll(string name) =>
+        name.Length is > 4 and <= 96 && name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+        && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 && name is not ("." or "..");
+
     /// <summary>The folder the mochizuki runtime reads beside itself: its model, its shaders in
     /// shaders\ and one level of subfolders there, and its prewarm list. The name is the runtime's
     /// own (upstream DLSSNR-AMD's), and the names inside come from upstream and change with it.</summary>

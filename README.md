@@ -81,13 +81,14 @@ Some of danielblnc's runtime builds go to his supporters only, 0.5.0 among them.
 distribute them, now or later, and neither does this repository or its payload.** Somebody who has
 one supplies it themselves. While the payload list names one (`user_runtimes` in
 `payload/payload.json`), the game's sheet has a block of its own under the route, on every ReShade
-route and on OptiScaler where a release runs the build, titled **danielblnc supporter build
-(newer)**: what it brings (a newer runtime than the download; 0.5.0 adds kernels for RDNA3 cards),
-that it is not distributed and you supply your own files, and the button **Use my supporter files…**
-for your `version.dll` or the `dlssnr_on_amd_setup.exe` it came in. The DLL is read out of the setup
-without running it. Under the button the block says which runtime goes in: the download, "Using 0.5.0
-from your file", or why not (no copy on this machine yet, or an add-on or OptiScaler version that does
-not run it, with the version that does); **Use the download instead** goes back.
+route and on OptiScaler where a release runs the build, titled **danielblnc's runtime**, with two
+cards and the one that goes in lit: **Public Release** (the version the app downloads and checks) and
+**Local Supporter Build** (a newer runtime than the download; 0.5.0 adds kernels for RDNA3 cards), and
+under them that the supporter build is not distributed. Picking the supporter card takes the copy
+already on this machine, or asks right there for your `version.dll` or the `dlssnr_on_amd_setup.exe`
+it came in; the DLL is read out of the setup without running it. Under the card the block says which
+runtime goes in: "Using 0.5.0 from your file", or why not (no copy on this machine yet, or an add-on or
+OptiScaler version that does not run it, with the version that does). The Public Release card goes back.
 
 - The file is checked by SHA-256 against the build the list names. On the ReShade routes, 64-bit and
   the 32-bit bridge, it is then patched in place, each change only over the bytes it expects, and it
@@ -135,9 +136,15 @@ Ported verbatim from the Rust engine, because these were paid for the hard way:
   under a name only this project uses, whether the install recorded it or it was copied in by hand,
   and a ReShade only when it is a build this app pins; anybody else's file stays. The settings files
   left at the end are named, and you choose whether they go too.
-- **The manifest is a compatibility surface.** It is accepted only when re-encoding reproduces it
-  byte for byte, which is what makes hand-editing detectable — and what keeps installs written by
-  the older C++ and Rust installers readable. The captured literal in the test suite is the guard.
+- **The manifest is a compatibility surface.** It is written byte for byte in the layout the older
+  C++ and Rust installers read, and the captured literal in the test suite is the guard. It is read
+  as JSON with every field checked (names, hashes, backups inside the backup folder), so the same
+  record reformatted by an editor still reads.
+- **An install clears what would stop it.** A record that cannot be read, an install cut off halfway,
+  or another API of the same route in the folder: the install takes out what is this app's first, the
+  way Uninstall does, keeping your settings, and goes in fresh. A record that cannot be read is kept
+  beside it as `.unreadable`. A file of ours replaced by hand is backed up and replaced, and a backup
+  deleted since only means there is no original to put back.
 - **Bitness is read from the PE header, not asked** — and the file it was read from is shown, with
   a way to point at a different one. Detection picks the game's binary out of the folder and a
   folder that keeps a launcher in the root and the game in `Bin64` is picked wrong; the routes that

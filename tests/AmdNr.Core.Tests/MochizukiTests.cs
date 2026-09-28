@@ -269,9 +269,14 @@ public class MochizukiTests
         Assert.Equal(Content("dlssnr-amd.shaders.runtime/cascade_blur.spv", "0.4.1"),
             File.ReadAllText(Path.Combine(game, "dlssnr-amd", "shaders", "runtime", "cascade_blur.spv")));
 
-        // Anything else of ours changed by hand is still refused, as before.
-        File.WriteAllText(Path.Combine(game, "dlssnr-amd", "shaders", "g_attn.spv"), "edited by hand");
-        Assert.True(Work.Install(game, src, Preset.OptiScaler, pins, mochizuki: true).Failed);
+        // Anything else changed by hand is backed up and replaced: refusing it left a folder no install
+        // could update.
+        var shader = Path.Combine(game, "dlssnr-amd", "shaders", "g_attn.spv");
+        File.WriteAllText(shader, "edited by hand");
+        var over = Work.Install(game, src, Preset.OptiScaler, pins, mochizuki: true);
+        Assert.False(over.Failed, over.ToLog("over a hand edit"));
+        Assert.NotEqual("edited by hand", File.ReadAllText(shader));
+        Assert.True(Fixture.HasAny(over, "had been changed since the install"), over.ToLog("over a hand edit"));
     }
 
     [Fact]

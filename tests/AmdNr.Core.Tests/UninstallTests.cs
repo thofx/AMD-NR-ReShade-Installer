@@ -111,8 +111,14 @@ public class UninstallTests
         var dx12 = Work.Install(game, src, Preset.Dx12, pins);
         Assert.False(dx12.Failed, dx12.ToLog("D3D12 after D3D11"));
 
-        // A live install is still not changed under itself.
-        Assert.True(Work.Install(game, src, Preset.Dx11, pins).Failed);
+        // And over a live one: the D3D12 install comes out first, settings kept, and D3D11 goes in. It
+        // used to fail with "Uninstall previous preset before changing API".
+        File.WriteAllText(Path.Combine(game, "amd-nr.ini"), "[amd-nr]\nPasses=2\n");
+        var over = Work.Install(game, src, Preset.Dx11, pins);
+        Assert.False(over.Failed, over.ToLog("D3D11 over a live D3D12"));
+        Assert.True(Fixture.HasAny(over, "This folder has the D3D12 install"), over.ToLog("D3D11 over a live D3D12"));
+        Assert.Equal("D3D11", Manifest.Decode(File.ReadAllText(Path.Combine(game, Engine.ManifestNameX64))).Preset);
+        Assert.Equal("[amd-nr]\nPasses=2\n", File.ReadAllText(Path.Combine(game, "amd-nr.ini")));
     }
 
     /// <summary>A file marked read-only -- an old CD install copies everything that way -- is not one

@@ -324,6 +324,8 @@ public static partial class Work
         if (Strip(line, "IDENTICAL: ") is { } identical) report.Ok($"{identical} already correct, left alone.");
         else if (Strip(line, "CREATE: ") is { } created) report.Ok($"{created} copied and verified.");
         else if (Strip(line, "EXTERNAL backed up: ") is { } backed) report.Ok($"{backed} replaced; the previous file was backed up.");
+        else if (Strip(line, "REPLACED changed since the install, backed up: ") is { } replaced)
+            report.Ok($"{replaced} had been changed since the install; that copy was backed up and replaced.");
         else if (Strip(line, "RESTORED: ") is { } restored) report.Ok($"restored {restored} from its backup");
         else if (Strip(line, "REMOVED: ") is { } removed) report.Ok($"removed {removed}");
         else if (Strip(line, "WARNING ") is { } warning) report.Warn(warning);
@@ -380,10 +382,20 @@ public static partial class Work
     /// <param name="wantedRuntime">The build chosen for the game when no file of it was found: the download
     /// goes in, and the report says the build is not used and why.</param>
     public static Report Preflight(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null) =>
-        preset.IsOptiScaler()
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null)
+    {
+        var report = preset.IsOptiScaler()
             ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
             : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime);
+        // Said before Install is pressed, as what Install does about it rather than as a problem.
+        try
+        {
+            if (InstallFolder(gameDir, preset) is { } dir && InTheWay(dir, preset) is { } why)
+                report.Info($"{why} {ClearsTheWay}");
+        }
+        catch (InstallException) { /* the route's own lines already say what is wrong with the folder */ }
+        return report;
+    }
 
     // -- Install ---------------------------------------------------------------------------------
 
@@ -391,8 +403,18 @@ public static partial class Work
     /// <param name="ownRuntime">See <see cref="Preflight"/>.</param>
     /// <param name="wantedRuntime">See <see cref="Preflight"/>.</param>
     public static Report Install(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null) =>
-        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
-        : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
-        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime);
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null, UserRuntime? wantedRuntime = null)
+    {
+        // What would make the transaction refuse, cleared first, on every route: see InTheWay.
+        var report = ClearTheWay(gameDir, preset, pins) ?? new Report();
+        if (report.Failed)
+        {
+            report.Info("Nothing new was written: fix the problem above and run it again.");
+            return report;
+        }
+        report.Append(preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
+            : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime, wantedRuntime)
+            : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime, wantedRuntime));
+        return report;
+    }
 }
