@@ -162,6 +162,14 @@ public sealed record GraphicsDetection(
         _ => "?",
     };
 
+    /// <summary>Whether what the files link can say anything against this API. D3D11 and D3D12 come through
+    /// the same DXGI and a game that imports one routinely loads the other at run time -- Need for Speed
+    /// (2016) imports d3d12.dll and renders D3D11 -- so one of them linked is no evidence against the other.</summary>
+    public static bool Reachable(GraphicsApi wanted, IEnumerable<GraphicsApi> linked) =>
+        linked.Any(a => a == wanted || Dxgi(a) && Dxgi(wanted));
+
+    private static bool Dxgi(GraphicsApi a) => a is GraphicsApi.D3D11 or GraphicsApi.D3D12;
+
     /// <summary>What PCGamingWiki says replaces what the files suggested about *which* APIs exist;
     /// the executable, and so the bitness, still comes from the files, because only the installed
     /// copy can say which build is on this disk.</summary>

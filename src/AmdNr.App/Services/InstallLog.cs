@@ -77,7 +77,7 @@ public static class InstallLog
 
                 // Said plainly, because it is the difference between a broken install and a working
                 // install of a route the game will never take.
-                if (g.Source is not null && g.Api != GraphicsApi.Unknown && !g.All.Contains(g.Api))
+                if (g.Source is not null && g.Api != GraphicsApi.Unknown && !GraphicsDetection.Reachable(g.Api, g.All))
                 {
                     Line(o, "NOTE",
                         $"the database lists {string.Join(", ", g.All.Select(GraphicsDetection.Short))} but this copy's "
