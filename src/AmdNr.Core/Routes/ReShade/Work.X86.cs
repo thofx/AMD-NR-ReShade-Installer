@@ -40,7 +40,7 @@ public static partial class Work
     }
 
     private static Report InstallX86(string gameDir, string releaseDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki)
+        string? proxy, bool mochizuki, string? ownRuntime)
     {
         var report = new Report();
         if (X86Target(gameDir, report) is not { } target) return report;
@@ -73,6 +73,10 @@ public static partial class Work
             if (pins.MochizukiFiles.Count == 0) report.Err(NoMochizuki);
             else AddMochizuki(extra, release, pins, report);
         }
+        // A build the person supplied, patched, runs in the 64-bit helper in place of the release's runtime.
+        var supplied = Supplied(ownRuntime, pins, preset, report);
+        if (supplied is { } own) extra[RuntimeName] = own.Bytes;
+        var loader = AuthorsLoaderHere(installDir, pins);
         var recorded = MochizukiRecorded(InstalledManifest(installDir, Route.X86));
         if (report.Failed)
         {
@@ -83,11 +87,13 @@ public static partial class Work
         var app = new X86Installer(release);
         try
         {
-            app.Install(target, preset.ManifestPreset(), proxyName, extra, recorded);
+            app.Install(target, preset.ManifestPreset(), proxyName, extra, recorded, loader ? [AuthorRuntimeName] : null);
             foreach (var line in app.Log) Narrate(line, report);
             if (!HasStandardShaders(installDir)) LeaveOutEffect(installDir, report);
             if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInAddon);
             else if (recorded.Count > 0) AfterMochizukiRetired(installDir, report);
+            if (supplied is { } kept) report.Info(SuppliedInstalled(kept.Build));
+            if (loader) report.Info(AuthorsLoaderMoves);
             report.Info(preset.Note());
             report.Info(
                 "It starts switched off. Open the overlay with Home, or press Ctrl+End. StartOn=1 in "

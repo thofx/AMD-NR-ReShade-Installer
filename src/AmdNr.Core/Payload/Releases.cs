@@ -345,6 +345,7 @@ public static class AddonReleases
             // Kept for what the chosen add-on reads out of them: the ReShade routes take the mochizuki
             // build from the newest OptiScaler release (PayloadManifest.WithMochizuki).
             Releases = manifest.Releases,
+            UserRuntimes = manifest.UserRuntimes,
         };
     }
 

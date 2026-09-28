@@ -92,6 +92,35 @@ Both components are installed only when somebody ticks mochizuki in the sheet, a
 does not know their names. An install with the box unticked takes out, in the same transaction,
 what an earlier install put in of them (`Transaction.PlanRetire`).
 
+### Runtimes a person supplies: `user_runtimes`
+
+Some of danielblnc's runtime builds go to his supporters only. **They are not in this list, in the
+dataset or anywhere this app downloads from, and never will be.** What `user_runtimes` carries for
+one is how to recognise it and how the add-on runs it, so somebody who has the build can point the
+app at their own `version.dll` or `dlssnr_on_amd_setup.exe`:
+
+```json
+"user_runtimes": [
+  {
+    "runtime": "DLSS-NR-on-AMD v0.5.0",
+    "name": "0.5.0",
+    "addon_since": "0.7.0",
+    "original_sha256": "cddfb09e…",
+    "original_size": 38703616,
+    "patched_sha256": "",
+    "changes": []
+  }
+]
+```
+
+`original_sha256`, `original_size`, `patched_sha256` and `changes` (`patch`, `offset` in hex, and
+`before`/`after` as hex bytes of the same length) are written exactly as the add-on's
+`tools/runtime-patches.json` writes a build. `addon_since` is the first add-on (and bridge) release
+that runs it patched, and `name` is what the sheet and the report call it. An entry whose `changes`
+is empty or whose `patched_sha256` is not set yet is not offered on the ReShade routes; OptiScaler,
+which runs the build unpatched, offers it from the first release its `AcceptedRuntimes` names.
+Older apps ignore the key.
+
 ### A version being prepared: placeholder pins
 
 A pin of 64 zeros (`PayloadManifest.PlaceholderSha`) stands for bytes that do not exist yet. A release

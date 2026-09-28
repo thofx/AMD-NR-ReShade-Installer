@@ -49,6 +49,14 @@ public sealed class PayloadPins
     /// model -- by their path in the payload folder. Empty when the OptiScaler version chosen does
     /// not carry it; installed only when it is asked for.</summary>
     public IReadOnlyDictionary<string, string> MochizukiFiles { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>The add-on and bridge versions pinned: which of <see cref="UserRuntimes"/> the ReShade
+    /// routes can run. Empty when not known, which runs none of them.</summary>
+    public string AddonVersion { get; init; } = string.Empty;
+    public string BridgeVersion { get; init; } = string.Empty;
+
+    /// <summary>danielblnc's builds a person supplies themselves (payload.json's user_runtimes).</summary>
+    public IReadOnlyList<UserRuntime> UserRuntimes { get; init; } = [];
 }
 
 /// <summary>What the target says about which route applies. A folder can hold a 32-bit launcher
@@ -117,7 +125,8 @@ public static partial class Work
                      || pinned.TryGetValue(Path.GetFileName(entry.Name), out want))
                     && Engine.Lower(entry.Hash) != want
                     && !(manifest.Preset == Preset.OptiScaler.ManifestPreset()
-                         && OwnRuntimeIsCurrent(payload, entry.Name, Engine.Lower(entry.Hash))))
+                        ? OwnRuntimeIsCurrent(payload, entry.Name, Engine.Lower(entry.Hash))
+                        : UserRuntimeIsCurrent(payload, manifest.Route, entry.Name, Engine.Lower(entry.Hash))))
                     return true;
             }
         }
@@ -358,18 +367,23 @@ public static partial class Work
     /// <param name="mochizuki">Install the mochizuki runtime as well. No route makes it the NR runtime:
     /// danielblnc stays it until the person picks mochizuki in OptiScaler's Neural tab or the add-on's
     /// panel.</param>
+    /// <param name="ownRuntime">A file holding a danielblnc build the person supplied, one the payload lists
+    /// under user_runtimes (see <see cref="UserRuntime.Read"/>), to install in place of the download's
+    /// runtime: patched on the ReShade routes, as it is on OptiScaler. Null is the download's -- and on
+    /// OptiScaler, as before, a build of the author's already in the folder.</param>
     public static Report Preflight(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false) =>
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null) =>
         preset.IsOptiScaler()
-            ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki)
-            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki);
+            ? PreflightOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime)
+            : PreflightReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime);
 
     // -- Install ---------------------------------------------------------------------------------
 
     /// <param name="mochizuki">See <see cref="Preflight"/>.</param>
+    /// <param name="ownRuntime">See <see cref="Preflight"/>.</param>
     public static Report Install(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy = null, bool mochizuki = false) =>
-        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki)
-        : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki)
-        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki);
+        string? proxy = null, bool mochizuki = false, string? ownRuntime = null) =>
+        preset.Route() == Route.X86 ? InstallX86(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime)
+        : preset.IsOptiScaler() ? InstallOptiScaler(gameDir, payloadDir, pins, proxy, mochizuki, ownRuntime)
+        : InstallReShade(gameDir, payloadDir, preset, pins, proxy, mochizuki, ownRuntime);
 }

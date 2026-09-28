@@ -97,6 +97,11 @@ public sealed class PayloadManifest
     /// newer app can install lives here, where an older one never looks.</summary>
     public Dictionary<string, List<ComponentRelease>>? Releases { get; init; }
 
+    /// <summary>danielblnc's builds a person supplies themselves, which this app never downloads: see
+    /// <see cref="UserRuntime"/>. A new one is a payload update rather than a release of this app.</summary>
+    [JsonPropertyName("user_runtimes")]
+    public List<UserRuntime>? UserRuntimes { get; init; }
+
     public const string AddonComponent = "addon";
     public const string RuntimeComponent = "runtime";
     public const string X86ExtrasComponent = "x86-extras";
@@ -162,6 +167,7 @@ public sealed class PayloadManifest
                     $"Release {release.Version} of {name} does not carry {name} {release.Version} itself.");
                 foreach (var (inner, component) in release.Components) Check(inner, component);
             }
+        foreach (var build in m.UserRuntimes ?? []) build.Check();
         return m;
     }
 
@@ -219,6 +225,7 @@ public sealed class PayloadManifest
             Tag = Tag,
             Components = components,
             Releases = Releases,
+            UserRuntimes = UserRuntimes,
         };
     }
 
@@ -347,6 +354,9 @@ public sealed class PayloadManifest
             OptiScalerVersion = Components.TryGetValue(OptiScalerComponent, out var opti) ? opti.Version : string.Empty,
             OptiRuntimeVersion = optiRt?.Version ?? string.Empty,
             MochizukiFiles = mochizuki,
+            AddonVersion = Component(AddonComponent).Version,
+            BridgeVersion = Components.TryGetValue(BridgeComponent, out var bridge) ? bridge.Version : string.Empty,
+            UserRuntimes = UserRuntimes ?? [],
         };
     }
 

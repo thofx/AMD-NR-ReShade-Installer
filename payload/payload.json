@@ -24001,5 +24001,16 @@
         }
       }
     ]
-  }
+  },
+  "user_runtimes": [
+    {
+      "runtime": "DLSS-NR-on-AMD v0.5.0",
+      "name": "0.5.0",
+      "addon_since": "0.7.0",
+      "original_sha256": "cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a",
+      "original_size": 38703616,
+      "patched_sha256": "",
+      "changes": []
+    }
+  ]
 }

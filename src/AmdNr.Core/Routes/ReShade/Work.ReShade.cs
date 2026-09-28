@@ -7,7 +7,7 @@ namespace AmdNr.Core;
 public static partial class Work
 {
     private static Report PreflightReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki)
+        string? proxy, bool mochizuki, string? ownRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -67,6 +67,7 @@ public static partial class Work
             if (allThere) report.Ok("Every payload is there and the right size. Installing verifies the SHA-256 too.");
         }
         if (mochizuki) CheckMochizukiPayload(src, pins, report);
+        CheckSupplied(ownRuntime, pins, preset, report);
 
         // --- the target -------------------------------------------------------------------------
         if (dir.Length == 0)
@@ -91,7 +92,8 @@ public static partial class Work
         // the copy come back with "access denied" halfway through.
         var route = preset.Route() == Route.X86 ? Route.X86 : Route.X64;
         var retiring = !mochizuki && MochizukiRecorded(InstalledManifest(dir, route)).Count > 0;
-        var held = new[] { AddonName, RuntimeName, WeightsName }
+        var loader = AuthorsLoaderHere(dir, pins);
+        var held = new[] { AddonName, RuntimeName, WeightsName }.Concat(loader ? [AuthorRuntimeName] : [])
             .Where(n => Engine.IsLocked(Path.Combine(dir, n)))
             .Concat(mochizuki || retiring ? MochizukiHeld(dir) : []).ToList();
         if (held.Count > 0)
@@ -139,6 +141,7 @@ public static partial class Work
 
         CheckDisabledAddons(dir, report);
         if (retiring) report.Info(MochizukiComesOut);
+        if (loader) report.Info(AuthorsLoaderMoves);
 
         var dead = DeadFiles().Where(n => File.Exists(Path.Combine(dir, n))).ToList();
         if (dead.Count > 0)
@@ -153,7 +156,7 @@ public static partial class Work
     }
 
     private static Report InstallReShade(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
-        string? proxy, bool mochizuki)
+        string? proxy, bool mochizuki, string? ownRuntime)
     {
         var report = new Report();
         var dir = ResolveSource(gameDir);
@@ -190,6 +193,7 @@ public static partial class Work
         }
 
         var payloads = PayloadDir(src);
+        var supplied = Supplied(ownRuntime, pins, preset, report);
         foreach (var (name, want) in new[]
                  {
                      (AddonName, pins.AddonSha),
@@ -197,7 +201,8 @@ public static partial class Work
                      (WeightsName, pins.WeightsSha),
                  })
         {
-            if (VerifiedPayload(payloads, name, want, report) is { } bytes) files[name] = bytes;
+            if (name == RuntimeName && supplied is { } own) files[name] = own.Bytes;
+            else if (VerifiedPayload(payloads, name, want, report) is { } bytes) files[name] = bytes;
         }
 
         // The companion effect. Shared with the 32-bit route; see AddCompanionEffect.
@@ -245,10 +250,11 @@ public static partial class Work
         // What an earlier install put in of mochizuki and this one does not write again comes out in
         // the same transaction, as on the OptiScaler route.
         var recorded = MochizukiRecorded(InstalledManifest(dir));
+        var loader = AuthorsLoaderHere(dir, pins);
         var log = new List<string>();
         try
         {
-            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log, recorded);
+            Transaction.Apply(dir, preset.ManifestPreset(), Route.X64, files, log, recorded, loader ? [AuthorRuntimeName] : null);
             foreach (var line in log) Narrate(line, report);
         }
         catch (InstallException e)
@@ -263,6 +269,8 @@ public static partial class Work
 
         if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInAddon);
         else if (recorded.Count > 0) AfterMochizukiRetired(dir, report);
+        if (supplied is { } kept) report.Info(SuppliedInstalled(kept.Build));
+        if (loader) report.Info(AuthorsLoaderMoves);
         if (!report.Failed)
         {
             report.Info(preset.Note());
