@@ -410,11 +410,7 @@ public static partial class Work
                 files[pass] = runtime;
         if (VerifiedPayload(src, WeightsName, pins.WeightsSha, report) is { } weights)
             files[WeightsName] = weights;
-        if (mochizuki)
-        {
-            AddMochizuki(files, src, pins, report);
-            PickMochizukiInIni(files, dir, manifest, report);
-        }
+        if (mochizuki) AddMochizuki(files, src, pins, report);
 
         if (report.Failed)
         {
@@ -450,7 +446,7 @@ public static partial class Work
             report.Info(
                 "The lmxxf runtime went in too, with its weights. It runs on RDNA4 (gfx1201) cards only: "
                 + "to use it, pick lmxxf under NR runtime in OptiScaler's Neural tab and restart the game.");
-        if (mochizuki) report.Info(MochizukiInstalled);
+        if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInOpti);
         else if (recorded.Count > 0) AfterMochizukiRetired(dir, report);
         report.Info(Preset.OptiScaler.Note());
         return report;

@@ -159,7 +159,7 @@ public class MochizukiTests
     }
 
     [Fact]
-    public void InstallPutsEveryFileInPlaceAndNamesItTheNrRuntime()
+    public void InstallPutsEveryFileInPlaceAndLeavesDanielblncTheNrRuntime()
     {
         var game = Game("install");
         var (src, pins) = Staged("install");
@@ -176,8 +176,9 @@ public class MochizukiTests
         Assert.Equal("0.4.0 OptiScaler.dll", File.ReadAllText(Path.Combine(game, "dxgi.dll")));
         Assert.True(File.Exists(Path.Combine(game, "dlssnr_amd_pass3.dll")));
 
-        // One key changed, every other byte of the package's ini as it was.
-        Assert.Equal(Ini.Replace("NrBackend=daniel", "NrBackend=mochizuki"), File.ReadAllText(Path.Combine(game, Work.OptiScalerIni)));
+        // The package's ini as it is: danielblnc stays the NR runtime, and the report says where to pick mochizuki.
+        Assert.Equal(Ini, File.ReadAllText(Path.Combine(game, Work.OptiScalerIni)));
+        Assert.True(Fixture.HasAny(report, "danielblnc stays the NR runtime"), report.ToLog("install"));
 
         var m = Manifest.Decode(File.ReadAllText(Path.Combine(game, Route.X64.ManifestFileName())));
         foreach (var destination in Destinations)
@@ -230,7 +231,7 @@ public class MochizukiTests
         var report = Work.Install(game, src, Preset.OptiScaler, pins, mochizuki: true);
         Assert.False(report.Failed, report.ToLog("install"));
         Assert.Equal("[DlssNr]\nNrBackend=lmxxf\n", File.ReadAllText(Path.Combine(game, Work.OptiScalerIni)));
-        Assert.True(Fixture.HasAny(report, "Pick mochizuki under NR runtime"), report.ToLog("install"));
+        Assert.True(Fixture.HasAny(report, "pick it under NR runtime in OptiScaler's Neural tab"), report.ToLog("install"));
         Assert.True(File.Exists(Path.Combine(game, "MochizukiNrRuntime.dll")));
 
         // One this app installed, that OptiScaler has saved settings into since.
@@ -241,7 +242,7 @@ public class MochizukiTests
         report = Work.Install(saved, src, Preset.OptiScaler, pins, mochizuki: true);
         Assert.False(report.Failed, report.ToLog("install over saved settings"));
         Assert.Equal(edited, File.ReadAllText(Path.Combine(saved, Work.OptiScalerIni)));
-        Assert.True(Fixture.HasAny(report, "Pick mochizuki under NR runtime"), report.ToLog("install over saved settings"));
+        Assert.True(Fixture.HasAny(report, "pick it under NR runtime in OptiScaler's Neural tab"), report.ToLog("install over saved settings"));
     }
 
     [Fact]
@@ -345,7 +346,7 @@ public class MochizukiTests
             var held = Work.Install(game, newer, Preset.OptiScaler, newerPins);
             Assert.True(Fixture.HasErr(held, "MochizukiNrRuntime.dll is open by another program"), held.ToLog("held"));
             Assert.Equal(recorded, File.ReadAllText(Path.Combine(game, Route.X64.ManifestFileName())));
-            Assert.Equal(Ini.Replace("NrBackend=daniel", "NrBackend=mochizuki"), File.ReadAllText(Path.Combine(game, Work.OptiScalerIni)));
+            Assert.Equal(Ini, File.ReadAllText(Path.Combine(game, Work.OptiScalerIni)));
         }
 
         // Left off, against a list whose mochizuki has moved on: it comes out with what its runtime wrote,

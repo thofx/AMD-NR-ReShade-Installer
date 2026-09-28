@@ -2,16 +2,14 @@
 // ReShade add-on can drive from v0.6.8 on: DLSS 5's NR network as
 // Vulkan compute shaders (mochizuki0323/DLSSNR-AMD), run on a Vulkan device of its own beside the
 // game's D3D12. It needs RDNA4's FP8 matrix instructions. Unlike the other two it goes in only when
-// somebody asks for it -- it is experimental and its model is 141 MB -- and asking for it also makes
-// it the NR runtime in OptiScaler.ini, the one key this app writes there. An install that does not
-// ask for it takes out what an earlier one put in, so the choice is what the folder holds. On the
-// ReShade routes it only puts the files in: amd-nr.ini is the person's, and the add-on's panel picks
-// the runtime (NR runtime), falling back to danielblnc when mochizuki's files are not there.
+// somebody asks for it -- it is experimental and its model is 141 MB. An install that does not ask for
+// it takes out what an earlier one put in, so the choice is what the folder holds. On every route it
+// only puts the files in, and danielblnc stays the NR runtime: OptiScaler.ini is written as the
+// package has it (NrBackend unset, which OptiScaler reads as daniel), amd-nr.ini is the person's, and
+// mochizuki is picked under NR runtime in OptiScaler's Neural tab or the add-on's panel.
 //
 // Everything else is the OptiScaler route's own: the same transaction and manifest, every file
 // pinned, and uninstall taking back what went in.
-
-using System.Text;
 
 namespace AmdNr.Core;
 
@@ -132,30 +130,9 @@ public static partial class Work
                 files[MochizukiDestination(path)] = bytes;
     }
 
-    /// <summary>Makes mochizuki the NR runtime in the OptiScaler.ini this install writes: one key,
-    /// [DlssNr] NrBackend, set in place the way ReShade.ini is edited, every other byte as it was.
-    /// An ini that is the person's -- one that was here before OptiScaler was installed from this
-    /// app, or one OptiScaler has saved settings into since -- is not written by the install at all,
-    /// so it is not changed here either: the report says where to pick mochizuki instead.</summary>
-    private static void PickMochizukiInIni(SortedDictionary<string, byte[]> files, string dir, Manifest? manifest,
-        Report report)
-    {
-        var path = Path.Combine(dir, OptiScalerIni);
-        var recorded = manifest?.Entries.FirstOrDefault(e => e.Name == OptiScalerIni);
-        var theirs = File.Exists(path) && (recorded is null || Engine.HashFile(path) != recorded.Hash);
-        if (theirs || !files.TryGetValue(OptiScalerIni, out var ini))
-        {
-            var now = File.Exists(path) ? Engine.Trim(Engine.GetIni(File.ReadAllText(path), "DlssNr", "NrBackend")) : "";
-            if (!string.Equals(now, MochizukiBackend, StringComparison.OrdinalIgnoreCase))
-                report.Info(
-                    $"{OptiScalerIni} holds your settings and stays as it is, so the NR runtime it names is unchanged. "
-                    + "Pick mochizuki under NR runtime in OptiScaler's Neural tab and restart the game.");
-            return;
-        }
-        files[OptiScalerIni] = Encoding.UTF8.GetBytes(
-            Engine.SetIni(Encoding.UTF8.GetString(ini), "DlssNr", "NrBackend", MochizukiBackend));
-        report.Ok($"{OptiScalerIni} names mochizuki as the NR runtime (NrBackend=mochizuki under [DlssNr]).");
-    }
+    private const string MochizukiPickInOpti =
+        "danielblnc stays the NR runtime: to use mochizuki, pick it under NR runtime in OptiScaler's Neural tab "
+        + "and restart the game.";
 
     private const string MochizukiInstalled =
         "The mochizuki runtime went in too: MochizukiNrRuntime.dll, and dlssnr-amd\\ with its shaders, its prewarm "

@@ -355,8 +355,9 @@ public static partial class Work
     // Everything that can be known before a single byte is written, and cheap enough to redo while
     // a path is still being pasted: metadata, one open(), one free-space call.
 
-    /// <param name="mochizuki">Install the mochizuki runtime as well. The OptiScaler route also makes it
-    /// the NR runtime in OptiScaler.ini; the ReShade routes leave that to the add-on's panel.</param>
+    /// <param name="mochizuki">Install the mochizuki runtime as well. No route makes it the NR runtime:
+    /// danielblnc stays it until the person picks mochizuki in OptiScaler's Neural tab or the add-on's
+    /// panel.</param>
     public static Report Preflight(string gameDir, string payloadDir, Preset preset, PayloadPins pins,
         string? proxy = null, bool mochizuki = false) =>
         preset.IsOptiScaler()

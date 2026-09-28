@@ -1,6 +1,6 @@
 // mochizuki as a person meets it: a version of OptiScaler that carries it shows the choice, off until
-// ticked; ticked, Install puts the runtime and its dlssnr-amd folder beside OptiScaler and names it the
-// NR runtime in OptiScaler.ini, and the game remembers the choice; with no choice on record the box
+// ticked; ticked, Install puts the runtime and its dlssnr-amd folder beside OptiScaler, danielblnc stays
+// the NR runtime in OptiScaler.ini, and the game remembers the choice; with no choice on record the box
 // follows the folder, and unticked, Install takes it out again. Run by the flows in Program.cs with
 // OptiScaler 1.0.2 installed from "releases"; it leaves 1.0.3 installed with mochizuki, for the
 // uninstall flow to take back.
@@ -52,8 +52,8 @@ internal static class MochizukiFlow
         foreach (var file in new[] { "MochizukiNrRuntime.dll", "dlssnr-amd/dlssnr.bin", "dlssnr-amd/prewarm/manifest.txt",
                      "dlssnr-amd/shaders/g_attn.spv", "dlssnr-amd/shaders/runtime/cascade_blur.spv" })
             check(File.Exists(Path.Combine(game, file)), $"with {file}");
-        check(Engine.GetIni(File.ReadAllText(ini), "DlssNr", "NrBackend").Trim() == "mochizuki",
-            "and OptiScaler.ini names mochizuki the NR runtime");
+        check(Engine.GetIni(File.ReadAllText(ini), "DlssNr", "NrBackend").Trim() != "mochizuki",
+            "and OptiScaler.ini leaves danielblnc the NR runtime");
 
         // The choice forgotten -- the game added again, the app on another PC: the box follows the folder.
         card.Entry.Mochizuki = null;

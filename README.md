@@ -63,13 +63,12 @@ add-on's on the ReShade side: every version the payload list carries, newest fir
 game. The lmxxf files come with 0.2.0 and later only.
 
 A version that carries mochizuki shows **NR runtime** under it: a box, off by default and remembered
-per game, that installs mochizuki too and sets `[DlssNr] NrBackend=mochizuki` in `OptiScaler.ini`
-(the one key the app writes there, in place). Unticked, the next install takes back out what the app
-put in of it; with no choice on record (a game added again, another PC) the box follows the folder.
-It is offered only on an RDNA4 card when the app can tell which card it is, and says so when it
-cannot. An `OptiScaler.ini` that holds your own settings is left alone; the report then says to pick
-mochizuki in OptiScaler's Neural tab. mochizuki files copied in by hand before are recorded as yours
-and stay yours.
+per game, that installs mochizuki too. danielblnc stays the NR runtime: `OptiScaler.ini` goes in as
+the package has it, and the report says to pick mochizuki under NR runtime in OptiScaler's Neural
+tab. Unticked, the next install takes back out what the app put in of it; with no choice on record
+(a game added again, another PC) the box follows the folder. It is offered only on an RDNA4 card when
+the app can tell which card it is, and says so when it cannot. mochizuki files copied in by hand
+before are recorded as yours and stay yours.
 
 No ReShade is installed on this route. Its files are downloaded when the route is installed, not
 in the first-run wizard, and the install goes through the same transaction, manifest and backups as
