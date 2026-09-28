@@ -369,6 +369,8 @@ public class UserRuntimeTests
             .Newest(PayloadManifest.OptiScalerComponent);
         var (build, original) = UserRuntime.Read(setup, shipped.Pins().UserRuntimes);
         Assert.Equal(build.OriginalSha256, Engine.Sha(original));
+        // And the patch the list gives it makes the very file the add-on accepts (its kSha256 for this build).
+        Assert.Equal(build.PatchedSha256, Engine.Sha(build.Patched(original)));
 
         var game = Fixture.Temp("ur-real");
         var (src, pins) = OptiScalerRouteTests.Payloads("ur-real");
