@@ -104,6 +104,27 @@ public class SupporterRoutesTests
         Assert.False(File.Exists(Path.Combine(dir, Work.RuntimeName)));
     }
 
+    /// <summary>An OptiScaler folder whose three passes are danielblnc's 0.5.0, supplied or taken from his
+    /// version.dll, is not out of date against the shipped payload's 0.4.2; one on 0.4.1 is.</summary>
+    [Fact]
+    public void OptiScalerOnTheSupporterBuildIsNotOutOfDate()
+    {
+        var shipped = PayloadManifest.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "payload.json")));
+        foreach (var (sha, outdated) in new[]
+                 {
+                     ("cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a", false),
+                     ("823063eb4c76b1334fd1800c41798873ae61d4016af0406f1f0b9dce57b1d376", true),
+                 })
+        {
+            var dir = Fixture.Temp("sr-opti-current");
+            var manifest = new Manifest(Preset.OptiScaler.ManifestPreset(), Route.X64);
+            foreach (var pass in new[] { "dlssnr_amd_pass1.dll", "dlssnr_amd_pass2.dll", "dlssnr_amd_pass3.dll" })
+                manifest.Entries.Add(new Entry { Name = pass, Hash = sha, Owned = true });
+            Manifest.WriteAtomic(dir, manifest);
+            Assert.Equal(outdated, Work.PayloadMovedOn(dir, shipped));
+        }
+    }
+
     /// <summary>The pins a payload carries for ReShade and the 32-bit extras are the ones installs check.</summary>
     [Fact]
     public void ThePinsAreThePayloads()
