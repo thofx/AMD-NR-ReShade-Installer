@@ -44,6 +44,29 @@ public class LibraryStateTests
         Assert.Equal(RouteFamily.OptiScaler, GameScanner.InstalledAs(foreign));
     }
 
+    /// <summary>danielblnc's setup: his runtime as version.dll, and the weights it builds beside it.
+    /// Neither is an install of ours, and an uninstall after ours leaves his weights to his runtime.</summary>
+    [Fact]
+    public void TheAuthorsOwnSetupIsNotAnInstallOfOurs()
+    {
+        var game = Fixture.Temp("as-author");
+        File.WriteAllBytes(Path.Combine(game, "game.exe"), Fixture.Pe(true));
+        File.WriteAllText(Path.Combine(game, "version.dll"), "his runtime");
+        File.WriteAllText(Path.Combine(game, Work.WeightsName), "his weights");
+        Assert.False(GameScanner.IsInstalled(game));
+        Assert.Null(GameScanner.InstalledAs(game));
+
+        var (src, pins) = OptiScalerRouteTests.Payloads("as-author");
+        Assert.False(Work.Install(game, src, Preset.OptiScaler, pins).Failed);
+        Assert.Equal(RouteFamily.OptiScaler, GameScanner.InstalledAs(game));
+
+        var report = Work.Uninstall(game, Preset.OptiScaler);
+        Assert.False(report.Failed, report.ToLog("author"));
+        Assert.True(File.Exists(Path.Combine(game, Work.WeightsName)), report.ToLog("author"));
+        Assert.Equal("his weights", File.ReadAllText(Path.Combine(game, Work.WeightsName)));
+        Assert.Null(GameScanner.InstalledAs(game));
+    }
+
     [Fact]
     public void AGameThatIsStillThereIsHere()
     {

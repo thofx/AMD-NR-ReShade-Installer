@@ -55,7 +55,12 @@ public static partial class Work
     ];
 
     /// <summary>The name the author's setup loads the runtime under.</summary>
-    private const string AuthorRuntimeName = "version.dll";
+    internal const string AuthorRuntimeName = "version.dll";
+
+    /// <summary>The weights file beside the author's version.dll is the author's runtime's: it builds
+    /// one there from the game's nvngx_dlssnr.dll, so it says nothing about an install of ours.</summary>
+    internal static bool IsAuthorsWeights(string dir, string name) =>
+        name == WeightsName && File.Exists(Path.Combine(dir, AuthorRuntimeName));
 
     /// <summary>The danielblnc runtimes OptiScaler runs in place of the one it ships with: SHA-256, runtime
     /// version, and the first OptiScaler release whose AmdLayout.h accepts that build (0.2.17 is in there too,

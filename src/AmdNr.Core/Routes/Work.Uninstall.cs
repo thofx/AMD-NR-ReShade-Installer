@@ -39,13 +39,18 @@ public static partial class Work
         var builds = new HashSet<string>([Engine.ReShadeSha, Engine.ReShade64Sha, Engine.D3d8To9Sha, .. pinned ?? []],
             StringComparer.OrdinalIgnoreCase);
         var proxies = Proxies.Append("d3d8R.dll").ToArray();
+        var recorded = Manifests(dir, migrate: true);
+        // The weights beside the author's version.dll, there now or coming back from the backup, are
+        // his runtime's.
+        var authors = File.Exists(Path.Combine(dir, AuthorRuntimeName))
+                      || recorded.Any(m => m.Entries.Any(e => e.Name == AuthorRuntimeName && e.Backup.Length > 0));
         // A file the runtime rewrites on its own (the mochizuki prewarm list) is changed by design,
         // and still this app's.
-        bool Ours(string name, string sha) => OurNames.Contains(name) || Engine.IsRuntimeMaintained(name)
+        bool Ours(string name, string sha) => (OurNames.Contains(name) && !(authors && name == WeightsName))
+                                              || Engine.IsRuntimeMaintained(name)
                                               || proxies.Contains(name) && builds.Contains(sha);
 
         var gone = 0;
-        var recorded = Manifests(dir, migrate: true);
         var opti = preset.IsOptiScaler() || recorded.Any(m => m.Preset == Preset.OptiScaler.ManifestPreset());
         foreach (var route in recorded.Select(m => m.Route))
         {
@@ -67,7 +72,8 @@ public static partial class Work
         // or put back from a backup, and a proxy under one of those names is not taken on its hash.
         var before = recorded.SelectMany(m => m.Entries).Select(e => e.Name).ToHashSet();
         var still = Manifests(dir, migrate: false).SelectMany(m => m.Entries).Select(e => e.Name).ToHashSet();
-        foreach (var name in OurNames.Where(n => !still.Contains(n))) gone += RemoveFile(dir, name, report);
+        foreach (var name in OurNames.Where(n => !still.Contains(n) && !(authors && n == WeightsName)))
+            gone += RemoveFile(dir, name, report);
         foreach (var name in proxies.Where(n => !before.Contains(n)))
         {
             var path = Path.Combine(dir, name);

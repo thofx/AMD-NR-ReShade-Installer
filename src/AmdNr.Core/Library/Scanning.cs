@@ -458,5 +458,5 @@ public static partial class GameScanner
     };
 
     public static bool IsInstalled(string folder) =>
-        Work.InstalledMarkers.Any(name => File.Exists(Path.Combine(folder, name)));
+        Work.InstalledMarkers.Any(name => File.Exists(Path.Combine(folder, name)) && !Work.IsAuthorsWeights(folder, name));
 }
