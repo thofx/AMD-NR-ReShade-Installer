@@ -237,6 +237,7 @@ public static partial class Work
 
         CheckOptiInTheWay(dir, proxyName, manifest, report);
         CheckRuntimeAsVersionDll(dir, pins, report);
+        CheckAuthorsRuntime(dir, pins, Preset.OptiScaler, report);
         CheckUpscaler(dir, report);
         CheckOptiRouteIsReachable(dir, report);
         if (!mochizuki && manifest?.Entries.Any(e => e.Name == MochizukiRuntimeName && e.Owned) == true)
@@ -290,6 +291,7 @@ public static partial class Work
         var manifest = InstalledManifest(dir);
         CheckOptiInTheWay(dir, proxyName, manifest, report);
         CheckRuntimeAsVersionDll(dir, pins, report);
+        CheckAuthorsRuntime(dir, pins, Preset.OptiScaler, report);
         if (report.Failed)
         {
             report.Info("Nothing was written: fix the problem above and run it again.");

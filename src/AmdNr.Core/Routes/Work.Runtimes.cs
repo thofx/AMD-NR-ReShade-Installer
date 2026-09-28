@@ -1,7 +1,8 @@
 // danielblnc's runtime builds: the ones this project has seen, the ones OptiScaler runs in place of the
 // one it ships with, and the ones a person supplies themselves (UserRuntime) -- his supporter builds,
 // which are never distributed. His own setup loads the runtime as version.dll; every route takes that
-// file to the backup rather than run a second driver on one runtime, and uninstall puts it back.
+// file to the backup rather than run a second driver on one runtime, and uninstall puts it back. Loaded
+// under another name, by a loader somebody else put there, it stops the ReShade routes instead.
 
 namespace AmdNr.Core;
 
@@ -193,10 +194,9 @@ public static partial class Work
         if (build.Kept() is { } kept) return kept;
         var dir = ResolveSource(gameDir);
         if (dir.Length == 0) return null;
-        foreach (var name in new[] { AuthorRuntimeName, RuntimeName })
+        // Under any name: his version.dll, the runtime an install put in, or his runtime a loader renamed.
+        foreach (var path in TopLevelDlls(dir).Where(p => Engine.SizeOf(p) == build.OriginalSize))
         {
-            var path = Path.Combine(dir, name);
-            if (Engine.SizeOf(path) != build.OriginalSize) continue;
             try
             {
                 UserRuntime.Keep(path, [build]);
@@ -219,20 +219,114 @@ public static partial class Work
                && (payload.UserRuntimes ?? []).Any(b => b.PatchedSha256 == sha && b.RunsOn(payload.Component(own).Version));
     }
 
-    /// <summary>Whether version.dll here is danielblnc's own loader: his runtime the way his setup installs
-    /// it, in a build this project has seen or one a person can supply. Beside the add-on that is two drivers
-    /// on one runtime -- why OptiScaler takes it too -- so the ReShade routes move it to the backup, and his
-    /// weights beside it stay his (<see cref="IsAuthorsWeights"/>).</summary>
-    private static bool AuthorsLoaderHere(string dir, PayloadPins pins)
+    // -- His standalone runtime in the game folder ---------------------------------------------------
+
+    /// <summary>danielblnc's runtime wherever it sits in this folder: every top-level DLL but the names this
+    /// app writes, of a size his builds come in, that hashes to a build this project knows. His setup loads it
+    /// as version.dll; a chain loader somebody added can load it under a name of its own -- NBA 2K27 had a
+    /// loader as version.dll and his 0.3.0 as dlssnr_ver.dll. Each file is hashed once (PayloadCache.HashOf),
+    /// so the pre-flight stays cheap.</summary>
+    private static List<(string Name, string Sha)> AuthorsRuntimesHere(string dir, PayloadPins pins)
     {
-        var path = Path.Combine(dir, AuthorRuntimeName);
-        if (Engine.SizeOf(path) is not { } size
-            || !(size is > 7_000_000 and < 40_000_000 || pins.UserRuntimes.Any(b => b.OriginalSize == size)))
-            return false;
-        var sha = Engine.HashFile(path);
-        return KnownRuntimePrefixes.Any(p => sha.StartsWith(p, StringComparison.Ordinal))
-               || pins.UserRuntimes.Any(b => b.OriginalSha256 == sha);
+        var ours = OptiPasses.Concat(DeadFiles()).Append(LmxxfRuntimeName).Append(MochizukiRuntimeName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var found = new List<(string Name, string Sha)>();
+        foreach (var path in TopLevelDlls(dir))
+        {
+            var name = Path.GetFileName(path);
+            if (ours.Contains(name) || Engine.SizeOf(path) is not { } size
+                || !(size is > 7_000_000 and < 40_000_000 || pins.UserRuntimes.Any(b => b.OriginalSize == size)))
+                continue;
+            if (PayloadCache.HashOf(path) is { } sha
+                && (KnownRuntimePrefixes.Any(p => sha.StartsWith(p, StringComparison.Ordinal))
+                    || AcceptedRuntimes.Any(r => r.Sha == sha) || pins.UserRuntimes.Any(b => b.OriginalSha256 == sha)))
+                found.Add((name, sha));
+        }
+        return found;
     }
+
+    private static IEnumerable<string> TopLevelDlls(string dir)
+    {
+        try
+        {
+            return Directory.GetFiles(dir, "*.dll")
+                .Where(p => Path.GetExtension(p).Equals(".dll", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>The DLL here that names <paramref name="runtime"/>: the loader that loads his runtime under a
+    /// name of its own. Only small ones are read; a loader is a shim.</summary>
+    private static string? LoaderOf(string dir, string runtime)
+    {
+        foreach (var path in TopLevelDlls(dir))
+        {
+            if (Path.GetFileName(path).Equals(runtime, StringComparison.OrdinalIgnoreCase)
+                || Engine.SizeOf(path) is not < 8_000_000) continue;
+            try
+            {
+                if (Engine.Mentions(File.ReadAllBytes(path), runtime)) return Path.GetFileName(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Held open or refused: not the one this can name.
+            }
+        }
+        return null;
+    }
+
+    /// <summary>What his setup leaves beside the game. His runtime writes dlssnr_on_amd.ini wherever it runs,
+    /// ours included, so that one says something only where no runtime of ours is.</summary>
+    private static List<string> AuthorsSetupHere(string dir) =>
+        new[] { "dlssnr_on_amd_setup.exe", "dlssnr_on_amd.ini" }
+            .Where(n => File.Exists(Path.Combine(dir, n)))
+            .Where(n => n != "dlssnr_on_amd.ini" || !File.Exists(Path.Combine(dir, RuntimeName)))
+            .ToList();
+
+    /// <summary>What danielblnc's runtime in this folder means for an install, in the report; true when it is
+    /// his version.dll, which the ReShade routes move to the backup. Loaded under another name, by a loader
+    /// this app did not put there, neither file is this app's to move: that stops a ReShade install, since his
+    /// runtime hooks the same DXGI and D3D12 calls ReShade does and the two together can keep the game from
+    /// starting, and OptiScaler is told. His setup's files with none of his runtime found are a warning.</summary>
+    private static bool CheckAuthorsRuntime(string dir, PayloadPins pins, Preset preset, Report report)
+    {
+        var found = AuthorsRuntimesHere(dir, pins);
+        foreach (var (name, sha) in found.Where(f => !f.Name.Equals(AuthorRuntimeName, StringComparison.OrdinalIgnoreCase)))
+        {
+            var by = LoaderOf(dir, name);
+            var here = $"danielblnc's standalone runtime{BuildOf(sha, pins)} is loaded here "
+                       + (by is null ? $"as {name}, by something this app did not install" : $"by {by}, as {name}");
+            var pick = pins.UserRuntimes.FirstOrDefault(b => b.OriginalSha256 == sha) is { } build
+                ? $" {name} is his {build.Name} supporter build: pick it as your supporter files in this app before you "
+                  + "remove his setup, and it can go in as the runtime."
+                : "";
+            if (preset.IsOptiScaler())
+                report.Warn($"{here}. Beside OptiScaler that is two drivers on one runtime, and OptiScaler takes his runtime "
+                            + "only as version.dll. Remove his setup from this folder with his own setup or uninstaller." + pick);
+            else
+                report.Err($"{here}. It hooks the same DXGI and D3D12 calls ReShade does, and the two together can keep "
+                           + "the game from starting. Neither file is this app's, so neither is touched: remove his setup "
+                           + "from this folder with his own setup or uninstaller, or install the OptiScaler route instead." + pick);
+        }
+        if (preset.IsOptiScaler()) return false;
+        var loader = found.Any(f => f.Name.Equals(AuthorRuntimeName, StringComparison.OrdinalIgnoreCase));
+        if (loader) report.Info(AuthorsLoaderMoves);
+        else if (found.Count == 0 && AuthorsSetupHere(dir) is { Count: > 0 } setup)
+            report.Warn(
+                $"{Joined(setup)} {(setup.Count == 1 ? "is" : "are")} here: danielblnc's own setup has been in this folder. "
+                + "None of his runtime was found loaded here, so this goes on; if the game does not start with ReShade, "
+                + "remove his setup with his own setup or uninstaller.");
+        return loader;
+    }
+
+    /// <summary>" 0.5.0" when the build is one this project can name, and nothing otherwise.</summary>
+    private static string BuildOf(string sha, PayloadPins pins) =>
+        pins.UserRuntimes.FirstOrDefault(b => b.OriginalSha256 == sha) is { } build ? " " + build.Name
+        : AcceptedRuntimes.FirstOrDefault(r => r.Sha == sha).Runtime is { } version ? $" {version}"
+        : "";
 
     private static string SuppliedInstalled(UserRuntime build) =>
         $"The runtime is danielblnc's {build.Name} from your own file, patched for the add-on, in place of the download's.";

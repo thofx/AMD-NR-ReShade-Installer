@@ -12,7 +12,7 @@ public class UserRuntimeTests
     private static readonly byte[] After = [0x31, 0xc0, 0x90, 0x90, 0x90, 0x90];
 
     /// <summary>A PE32+ DLL: headers, then one section of random bytes to the end of the file.</summary>
-    private static byte[] Dll(int seed)
+    internal static byte[] Dll(int seed)
     {
         var b = new byte[0x200 + 0x4000];
         new Random(seed).NextBytes(b.AsSpan(0x200));
@@ -48,7 +48,7 @@ public class UserRuntimeTests
         return b;
     }
 
-    private static UserRuntime Build(byte[] original, bool complete = true, string? patchedSha = null, string? before = null)
+    internal static UserRuntime Build(byte[] original, bool complete = true, string? patchedSha = null, string? before = null)
     {
         var patched = (byte[])original.Clone();
         After.CopyTo(patched, At);
@@ -72,7 +72,7 @@ public class UserRuntimeTests
     }
 
     /// <summary>The fixture's add-on payload, pinned for an add-on at <paramref name="addon"/> with this build listed.</summary>
-    private static (string Src, PayloadPins Pins) Payloads(string tag, UserRuntime build, string addon = "0.7.0")
+    internal static (string Src, PayloadPins Pins) Payloads(string tag, UserRuntime build, string addon = "0.7.0")
     {
         var (src, pins) = Fixture.Payloads(tag);
         return (src, new PayloadPins

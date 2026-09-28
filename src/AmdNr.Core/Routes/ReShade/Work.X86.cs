@@ -76,7 +76,7 @@ public static partial class Work
         // A build the person supplied, patched, runs in the 64-bit helper in place of the release's runtime.
         var supplied = Supplied(ownRuntime, wantedRuntime, pins, preset, report);
         if (supplied is { } own) extra[RuntimeName] = own.Bytes;
-        var loader = AuthorsLoaderHere(installDir, pins);
+        var loader = CheckAuthorsRuntime(installDir, pins, preset, report);
         var recorded = MochizukiRecorded(InstalledManifest(installDir, Route.X86));
         if (report.Failed)
         {
@@ -93,7 +93,6 @@ public static partial class Work
             if (mochizuki) report.Info(MochizukiInstalled + " " + MochizukiPickInAddon);
             else if (recorded.Count > 0) AfterMochizukiRetired(installDir, report);
             if (supplied is { } kept) report.Info(SuppliedInstalled(kept.Build));
-            if (loader) report.Info(AuthorsLoaderMoves);
             report.Info(preset.Note());
             report.Info(
                 "It starts switched off. Open the overlay with Home, or press Ctrl+End. StartOn=1 in "

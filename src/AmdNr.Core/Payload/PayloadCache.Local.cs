@@ -24,30 +24,37 @@ public sealed partial class PayloadCache
 
     /// <summary>Whether the file at <paramref name="path"/> is the pinned one. False for a file that
     /// is missing, the wrong size, unreadable, or not those bytes.</summary>
-    internal static bool Verified(string path, ulong size, string sha)
+    internal static bool Verified(string path, ulong size, string sha) =>
+        HashOf(path, size) == sha;
+
+    /// <summary>The SHA-256 of the file at <paramref name="path"/>, worked out once per size and write time
+    /// (see <see cref="Hashes"/>). Null for a file that is missing, unreadable, or not <paramref name="size"/>
+    /// bytes when one is given.</summary>
+    internal static string? HashOf(string path, ulong? size = null)
     {
         FileInfo info;
         try
         {
             info = new FileInfo(path);
-            if (!info.Exists || (ulong)info.Length != size) return false;
+            if (!info.Exists || size is { } want && (ulong)info.Length != want) return null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException
                                       or NotSupportedException)
         {
-            return false;
+            return null;
         }
 
         var key = info.FullName;
+        var length = (ulong)info.Length;
         var written = info.LastWriteTimeUtc;
-        if (Hashes.TryGetValue(key, out var seen) && seen.Size == size && seen.Written == written)
-            return seen.Sha == sha;
+        if (Hashes.TryGetValue(key, out var seen) && seen.Size == length && seen.Written == written)
+            return seen.Sha;
 
         string got;
         try { got = Engine.HashFile(path); }
-        catch (InstallException) { return false; }
-        Hashes[key] = (size, written, got);
-        return got == sha;
+        catch (InstallException) { return null; }
+        Hashes[key] = (length, written, got);
+        return got;
     }
 
     /// <summary>Where a file is looked for before it is downloaded, when the app asks for that: the

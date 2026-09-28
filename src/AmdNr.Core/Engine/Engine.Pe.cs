@@ -54,9 +54,13 @@ public static partial class Engine
     /// <summary>Some maintained game wrappers deliberately forward Direct3D 8 to d3d8R.dll. Detect
     /// only an explicit embedded sidecar name; otherwise fail closed rather than replacing an
     /// unknown wrapper.</summary>
-    public static bool AdvertisesD3d8Sidecar(ReadOnlySpan<byte> b)
+    public static bool AdvertisesD3d8Sidecar(ReadOnlySpan<byte> b) => Mentions(b, "d3d8r.dll");
+
+    /// <summary>Whether the bytes name a file, in ASCII or UTF-16 and in any case: how a wrapper or a loader
+    /// says what it loads.</summary>
+    public static bool Mentions(ReadOnlySpan<byte> b, string name)
     {
-        ReadOnlySpan<byte> marker = "d3d8r.dll"u8;
+        ReadOnlySpan<byte> marker = System.Text.Encoding.ASCII.GetBytes(Lower(name));
         var n = marker.Length;
         for (var i = 0; i < b.Length; i++)
         {
