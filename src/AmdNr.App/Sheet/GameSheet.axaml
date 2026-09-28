@@ -315,31 +315,61 @@
                       </StackPanel>
                     </Border>
 
-                    <!-- danielblnc's supporter build: a newer runtime than the download, which this app never
-                         distributes. A panel of its own under the route's, titled, so a supporter finds it; its
-                         one red button besides Install is the way to hand the app their own files. -->
+                    <!-- Which danielblnc runtime goes in: the download, or the supporter build the person supplies,
+                         which this app never distributes. Two cards like the route's above, so it reads as the
+                         choice it is and the one in use is the one lit; where the files come from sits under the
+                         supporter card only once it is chosen. -->
                     <Border x:Name="RuntimeSection" Classes="routePanel" IsVisible="False">
                       <StackPanel Spacing="10">
                         <StackPanel Spacing="4">
                           <TextBlock Text="{DynamicResource Str.SupporterTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                          <TextBlock x:Name="RuntimePitch" Classes="muted" TextWrapping="Wrap" LineHeight="18" />
+                          <TextBlock Text="{DynamicResource Str.SupporterChoose}" Classes="muted" TextWrapping="Wrap" LineHeight="18" />
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,12,*">
+                          <RadioButton x:Name="RuntimeDownloadChoice" Classes="route" GroupName="runtime"
+                                       IsCheckedChanged="OnRuntimeChoice"
+                                       AutomationProperties.Name="{DynamicResource Str.SupporterUseDownload}">
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                              <Border Classes="iconTile small" Margin="0,0,10,0"><PathIcon Data="{StaticResource IconDownload}" /></Border>
+                              <TextBlock Grid.Column="1" x:Name="RuntimeDownloadTitle" FontWeight="SemiBold" TextWrapping="Wrap"
+                                         VerticalAlignment="Center" />
+                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{DynamicResource Str.SupporterDownloadBody}"
+                                         Classes="muted" TextWrapping="Wrap" Margin="0,10,0,0" LineHeight="17" />
+                            </Grid>
+                          </RadioButton>
+                          <RadioButton Grid.Column="2" x:Name="RuntimeSupporterChoice" Classes="route" GroupName="runtime"
+                                       IsCheckedChanged="OnRuntimeChoice"
+                                       AutomationProperties.Name="{DynamicResource Str.SupporterUse}">
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                              <Border Classes="iconTile small" Margin="0,0,10,0"><PathIcon Data="{StaticResource IconHeart}" /></Border>
+                              <TextBlock Grid.Column="1" x:Name="RuntimeSupporterTitle" FontWeight="SemiBold" TextWrapping="Wrap"
+                                         VerticalAlignment="Center" />
+                              <TextBlock Grid.Row="1" Grid.ColumnSpan="2" x:Name="RuntimePitch" Classes="muted" TextWrapping="Wrap"
+                                         Margin="0,10,0,0" LineHeight="17" />
+                            </Grid>
+                          </RadioButton>
+                        </Grid>
+                        <StackPanel x:Name="RuntimeSupporterPanel" Spacing="8" IsVisible="False">
+                          <Grid ColumnDefinitions="Auto,*">
+                            <PathIcon x:Name="RuntimeNoteIcon" Width="16" Height="16" VerticalAlignment="Top" Margin="0,1,10,0" />
+                            <TextBlock Grid.Column="1" x:Name="RuntimeNote" FontWeight="SemiBold" TextWrapping="Wrap" LineHeight="18" />
+                          </Grid>
+                          <Button x:Name="RuntimeFileButton" Classes="ghost" Click="OnChooseRuntimeFile" HorizontalAlignment="Left"
+                                  AutomationProperties.Name="{DynamicResource Str.SupporterPick}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <PathIcon Data="{StaticResource IconFolderOpen}" />
+                              <TextBlock x:Name="RuntimeFileLabel" Text="{DynamicResource Str.SupporterPick}" />
+                            </StackPanel>
+                          </Button>
                         </StackPanel>
                         <Border Classes="callout">
                           <Grid ColumnDefinitions="Auto,*">
-                            <PathIcon Data="{StaticResource IconWarn}" Width="16" Height="16"
+                            <PathIcon Data="{StaticResource IconInfo}" Width="16" Height="16"
                                       Foreground="{DynamicResource Warn}" VerticalAlignment="Top" Margin="0,1,10,0" />
                             <TextBlock Grid.Column="1" Text="{DynamicResource Str.SupporterNotDistributed}" TextWrapping="Wrap"
                                        LineHeight="19" Foreground="{DynamicResource WarnText}" />
                           </Grid>
                         </Border>
-                        <WrapPanel ItemSpacing="14" LineSpacing="8">
-                          <Button x:Name="RuntimeFileButton" Classes="primary" Click="OnChooseRuntimeFile"
-                                  Content="{DynamicResource Str.SupporterUse}"
-                                  AutomationProperties.Name="{DynamicResource Str.SupporterUse}" />
-                          <Button x:Name="RuntimeDownloadButton" Classes="link" Click="OnUseDownload" VerticalAlignment="Center"
-                                  Content="{DynamicResource Str.SupporterUseDownload}" />
-                        </WrapPanel>
-                        <TextBlock x:Name="RuntimeNote" FontWeight="SemiBold" TextWrapping="Wrap" LineHeight="18" />
                       </StackPanel>
                     </Border>
 
