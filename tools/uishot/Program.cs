@@ -304,6 +304,7 @@ void Flows()
     Click(install);
     Check(Until(() => !session.Busy) && card.InstalledVia == RouteFamily.ReShade && !card.Outdated,
         "Update brings it in line");
+    RuntimeFlow.Run(main, sheet, card, game, Check, Until, Click, (w, n) => Save(w, n)); // leaves the download in
 
     // A download with nowhere to come from: the sheet and the files panel both say so, stay saying
     // so, and offer the DNS fix, because no answer ever came back.

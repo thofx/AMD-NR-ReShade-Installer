@@ -44,6 +44,7 @@ public partial class GameSheet
         var preset = card.Entry.Preset;
         var proxy = _proxy;
         var mochizuki = WantsMochizuki(card);
+        var wanted = WantedRuntime(card);
 
         // A result belongs to the action that produced it; a new check replaces it.
         Steps.IsVisible = false;
@@ -51,13 +52,14 @@ public partial class GameSheet
         _report.Clear();
 
         Report report;
-        string? staged;
+        string? staged, runtime = null;
         try
         {
-            (report, staged) = await Task.Run(() =>
+            (report, staged, runtime) = await Task.Run(() =>
             {
                 var folder = CachedPayloadFolder(preset, mochizuki);
-                return (Work.Preflight(TargetFor(card), folder ?? "", preset, pins, proxy, mochizuki), folder);
+                var own = wanted is null ? null : Work.FindUserRuntime(wanted, TargetFor(card));
+                return (Work.Preflight(TargetFor(card), folder ?? "", preset, pins, proxy, mochizuki, own), folder, own);
             });
         }
         catch (Exception e)
@@ -69,6 +71,7 @@ public partial class GameSheet
         // check that started after this one is the one to show, even if it finished first.
         if (check != _checks || _card != card || Session.Busy) return;
 
+        NoteRuntime(report, wanted, runtime);
         Show(report);
         card.RefreshInstalled();
         ShowVerdict(report, card);
@@ -95,8 +98,18 @@ public partial class GameSheet
         var pins = Pins();
         var proxy = _proxy;
         var mochizuki = WantsMochizuki(card);
+        var wanted = WantedRuntime(card);
         try
         {
+            // The build the person supplied, found and kept before a switch takes the other route's
+            // files out of the folder, one of which may be the only copy on this machine.
+            var runtime = wanted is null ? null : await Task.Run(() => Work.FindUserRuntime(wanted, TargetFor(card)));
+            if (wanted is not null && runtime is null && Offered(wanted))
+            {
+                ShowResult(Level.Err, Ui.Format("Str.RuntimeMissing", wanted.Name), "");
+                return;
+            }
+
             if (switching)
             {
                 var removed = await RunUninstallAsync(card, InstalledPreset(card), removeConfig: false);
@@ -122,7 +135,7 @@ public partial class GameSheet
             Status(Ui.Text("Str.Working"));
             var target = TargetFor(card);
             Report report;
-            try { report = await WritingAsync(() => Work.Install(target, folder, preset, pins, proxy, mochizuki)); }
+            try { report = await WritingAsync(() => Work.Install(target, folder, preset, pins, proxy, mochizuki, runtime)); }
             catch (Exception ex)
             {
                 // The engine turns everything it expects into a report line, and rolls back before

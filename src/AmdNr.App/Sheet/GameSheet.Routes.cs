@@ -121,6 +121,7 @@ public partial class GameSheet
         }
         ShowProxies(preset);
         ShowVersions(preset);
+        ShowRuntime();
         ShowMochizuki();
         ShowInstallLabel();
     }
@@ -276,6 +277,7 @@ public partial class GameSheet
         Remember(card, _version);
         Library.Save();
         (box == OptiVersionBox ? OptiVersionNote : VersionNote).Text = VersionNoteText();
+        ShowRuntime();
         ShowMochizuki();
         ShowInstallLabel();
         // A different version is a different pair of hashes, so the pre-flight has to be redone:
