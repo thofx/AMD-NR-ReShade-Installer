@@ -37,7 +37,7 @@ public class UserRuntimeTests
 
     /// <summary>His setup's shape from v0.3.3 on: an executable whose .rdata holds the DLL as a byte array,
     /// after two strings, with more of the setup after it -- and an "MZ" that is not a header.</summary>
-    private static byte[] Setup(byte[] dll)
+    internal static byte[] Setup(byte[] dll)
     {
         var before = "dlssnr_on_amd_weights.bin\0nvngx_dlssnr.dll\0MZ, but not a header\0"u8.ToArray();
         var b = new byte[0x200 + before.Length + dll.Length + 1234];
@@ -388,5 +388,21 @@ public class UserRuntimeTests
             Assert.Equal(build.OriginalSha256, Sha(game, pass));
         Assert.Same(build, Work.UserRuntimeIn(game, pins.UserRuntimes));
         Assert.False(Work.Uninstall(game, Preset.OptiScaler).Failed);
+
+        // And the 32-bit bridge takes it patched, checked against the list's pins and not the engine's.
+        var x86 = Fixture.Temp("ur-real-x86");
+        var exe = Path.Combine(x86, "Game.exe");
+        File.WriteAllBytes(exe, Fixture.Pe(false));
+        var bridge = UninstallInvariantTests.X86Release("ur-real").Installer;
+        var bridgePins = new PayloadPins
+        {
+            AddonSha = "", AddonSize = 0, RuntimeSha = bridge.RuntimeSha, WeightsSha = bridge.WeightsSha,
+            ReShade32Sha = bridge.ReShadeSha, D3d8To9Sha = bridge.D3d8To9Sha, BridgeVersion = build.AddonSince,
+            UserRuntimes = shipped.Pins().UserRuntimes,
+        };
+        var bridged = Work.Install(exe, bridge.Release, Preset.X86Dx9, bridgePins, ownRuntime: setup);
+        Assert.False(bridged.Failed, bridged.ToLog("real x86"));
+        Assert.Equal(build.PatchedSha256, Sha(x86, Work.RuntimeName));
+        Assert.False(Work.Uninstall(exe, Preset.X86Dx9).Failed);
     }
 }

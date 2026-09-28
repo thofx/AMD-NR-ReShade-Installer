@@ -250,7 +250,8 @@ public partial class GameSheet
         var target = TargetFor(card);
         // The ReShade this payload pins, besides the builds the engine knows: a ReShade copied in by
         // hand is taken out only when it is one of those.
-        var pinned = new[] { Pins().ReShade64Sha };
+        var pins = Pins();
+        var pinned = new[] { pins.ReShade64Sha, pins.ReShade32Sha, pins.D3d8To9Sha };
         Report report;
         try { report = await WritingAsync(() => Work.Uninstall(target, preset, removeConfig, pinned)); }
         catch (Exception ex) { report = Failure(ex); }

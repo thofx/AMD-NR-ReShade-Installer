@@ -84,7 +84,11 @@ public static partial class Work
             return report;
         }
 
-        var app = new X86Installer(release);
+        // The payload's pins, as every other route checks against: never the engine's constants.
+        var app = new X86Installer(release)
+        {
+            RuntimeSha = pins.RuntimeSha, WeightsSha = pins.WeightsSha, ReShadeSha = pins.ReShade32Sha, D3d8To9Sha = pins.D3d8To9Sha,
+        };
         try
         {
             app.Install(target, preset.ManifestPreset(), proxyName, extra, recorded, loader ? [AuthorRuntimeName] : null);

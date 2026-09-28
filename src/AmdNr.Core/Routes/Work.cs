@@ -26,6 +26,12 @@ public sealed class PayloadPins
     /// it. Checked like every other payload.</summary>
     public string ReShade64Sha { get; init; } = Engine.ReShade64Sha;
 
+    /// <summary>The 32-bit route's ReShade and d3d8to9, from the payload's x86-extras. The bridge installer
+    /// checked the engine's own constants instead, so a payload that moved any pin -- the runtime's first
+    /// -- failed every 32-bit install with "SHA256 mismatch" over the file it had just downloaded.</summary>
+    public string ReShade32Sha { get; init; } = Engine.ReShadeSha;
+    public string D3d8To9Sha { get; init; } = Engine.D3d8To9Sha;
+
     /// <summary>The companion effect. Empty when the manifest does not carry one, which is how
     /// an install from an older manifest skips it instead of failing.</summary>
     public string ShaderSha { get; init; } = string.Empty;

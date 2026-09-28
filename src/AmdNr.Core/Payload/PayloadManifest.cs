@@ -354,11 +354,20 @@ public sealed class PayloadManifest
             OptiScalerVersion = Components.TryGetValue(OptiScalerComponent, out var opti) ? opti.Version : string.Empty,
             OptiRuntimeVersion = optiRt?.Version ?? string.Empty,
             MochizukiFiles = mochizuki,
+            ReShade64Sha = Pin(ReShadeComponent, "ReShade64.dll") ?? Engine.ReShade64Sha,
+            ReShade32Sha = Pin(X86ExtrasComponent, "dxgi.dll") ?? Engine.ReShadeSha,
+            D3d8To9Sha = Pin(X86ExtrasComponent, "d3d8to9.dll") ?? Engine.D3d8To9Sha,
             AddonVersion = Component(AddonComponent).Version,
             BridgeVersion = Components.TryGetValue(BridgeComponent, out var bridge) ? bridge.Version : string.Empty,
             UserRuntimes = UserRuntimes ?? [],
         };
     }
+
+    /// <summary>The pin of one installed file of an optional component, or null without it.</summary>
+    private string? Pin(string componentName, string fileName) =>
+        Components.TryGetValue(componentName, out var c) && c.Installed.FirstOrDefault(f => f.Name == fileName) is { } file
+            ? Engine.Lower(file.Sha256)
+            : null;
 
     private PayloadFile Single(string componentName, string fileName)
     {
