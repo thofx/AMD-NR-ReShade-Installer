@@ -24,7 +24,7 @@ The same files, verified the same way:
 | | |
 |---|---|
 | `amd-nr.addon64` | the add-on, from its GitHub release |
-| `dlssnr_amd_pass1.dll` | the neural runtime |
+| `dlssnr_amd_pass1.dll` | the neural runtime, or a supporter build you supply yourself (below) |
 | `dlssnr_on_amd_weights.bin` | the weights, 141 MB |
 | ReShade 6.8.0, full add-on support | under the proxy name the route loads, or the one you pick |
 | `AMD_Neural_Feed.fx` | the companion effect, in `reshade-shaders\Shaders\` |
@@ -74,6 +74,35 @@ No ReShade is installed on this route. Its files are downloaded when the route i
 in the first-run wizard, and the install goes through the same transaction, manifest and backups as
 every other route. In game, OptiScaler opens with Insert; the network is switched on under its
 Neural tab, and lmxxf is picked under NR runtime there.
+
+## danielblnc's supporter builds: your own files
+
+Some of danielblnc's runtime builds go to his supporters only, 0.5.0 among them. **This app does not
+distribute them, now or later, and neither does this repository or its payload.** Somebody who has
+one supplies it themselves. When the route and version chosen run a build the payload list names
+(`user_runtimes` in `payload/payload.json`), the game's sheet shows **danielblnc runtime**: the
+download, which is the default, or "0.5.0 — supporter build, your own files", with **Choose file…**
+for your `version.dll` or the `dlssnr_on_amd_setup.exe` it came in. The DLL is read out of the setup
+without running it.
+
+- The file is checked by SHA-256 against the build the list names. On the ReShade routes, 64-bit and
+  the 32-bit bridge, it is then patched in place, each change only over the bytes it expects, and it
+  goes in as `dlssnr_amd_pass1.dll` only if the result hashes to the patched SHA-256 the list gives;
+  the add-on accepts it by that hash from the version the list names (v0.7.0 for 0.5.0). On the
+  OptiScaler route it goes in unpatched, as its runtime passes, from the first OptiScaler release that
+  runs it (0.4.4-amd-nr for 0.5.0).
+- The checked original is kept in `%AppData%\AmdNrInstaller\runtimes\`, named by its hash, so other
+  games do not ask for it again. It is hashed again every time it is installed, and it is never
+  uploaded or written into a log or a report. Emptying the download cache leaves it; delete that
+  folder to forget it.
+- A game folder that already holds danielblnc's own `version.dll` of that build is used as the source
+  too. On a ReShade route that `version.dll` is his standalone loader, and beside the add-on it would
+  be two drivers on one runtime, so the install moves it to the backup, as the OptiScaler route does,
+  and uninstall puts it back, with his weights.
+- The choice is remembered per game, and until it is made it follows the folder. An install on the
+  build stays on it when updated, and is not called out of date for running a runtime other than the
+  download. An add-on version that does not run the build gets the download instead, and the report
+  says so. Until the list carries the build's patch, it is offered on the OptiScaler route only.
 
 ## How an install is kept undoable
 
