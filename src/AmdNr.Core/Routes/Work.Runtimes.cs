@@ -9,7 +9,7 @@ namespace AmdNr.Core;
 public static partial class Work
 {
     /// <summary>The runtime builds this project has seen, by the start of their SHA-256: danielblnc's
-    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1 and 0.4.2, the 0.4.3 and 0.5.0 he gives his supporters, and
+    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1, 0.4.2 and 0.4.3, the 0.5.0 he gives his supporters, and
     /// the 0.3.0, 0.4.0 and 0.4.1 the add-on pins. Any of them sitting in the game folder as version.dll is the
     /// author's own way of loading the runtime.</summary>
     private static readonly string[] KnownRuntimePrefixes =
@@ -236,7 +236,7 @@ public static partial class Work
         var ours = OptiPasses.Concat(DeadFiles()).Concat(RuntimeCopies).Append(LmxxfRuntimeName).Append(MochizukiRuntimeName)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         // And ours by content, under any name: a build patched for the add-on is one his setups never load.
-        var patched = new HashSet<string>([Engine.RuntimeSha, pins.RuntimeSha, .. pins.UserRuntimes.Select(b => b.PatchedSha256)],
+        var patched = new HashSet<string>([Engine.RuntimeSha, .. Engine.EarlierRuntimeShas, pins.RuntimeSha, .. pins.UserRuntimes.Select(b => b.PatchedSha256)],
             StringComparer.OrdinalIgnoreCase);
         var found = new List<(string Name, string Sha)>();
         foreach (var path in TopLevelDlls(dir))

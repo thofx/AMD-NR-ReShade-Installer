@@ -10,44 +10,44 @@ namespace AmdNr.Core.Tests;
 public class ReleasesTests
 {
     /// <summary>The shape GitHub actually answers with, cut down to the fields that are read. The
-    /// v0.5.0 entry is the real one: an add-on published loose, the pair only inside the archive.
+    /// v0.6.9 entry has the shape v0.5.0 really had: an add-on published loose, the pair only inside the archive.
     /// </summary>
     private const string ReleasesJson = """
     [
       {
-        "tag_name": "v0.5.1", "name": "v0.5.1", "draft": false, "prerelease": false,
+        "tag_name": "v0.7.1", "name": "v0.7.1", "draft": false, "prerelease": false,
         "published_at": "2026-09-16T00:00:00Z",
         "assets": [
           { "name": "amd-nr.addon64", "size": 550400,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.1/amd-nr.addon64" },
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.1/amd-nr.addon64" },
           { "name": "amd-nr.addon32", "size": 257536,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.1/amd-nr.addon32" },
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.1/amd-nr.addon32" },
           { "name": "amd-nr-host64.exe", "size": 442368,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.1/amd-nr-host64.exe" },
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.1/amd-nr-host64.exe" },
           { "name": "payload.sha256", "size": 179,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.1/payload.sha256" },
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.1/payload.sha256" },
           { "name": "SHA256SUMS.txt", "size": 400,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.1/SHA256SUMS.txt" }
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.1/SHA256SUMS.txt" }
         ]
       },
       {
-        "tag_name": "v0.5.0", "name": "v0.5.0", "draft": false, "prerelease": false,
+        "tag_name": "v0.6.9", "name": "v0.6.9", "draft": false, "prerelease": false,
         "published_at": "2026-09-15T00:24:02Z",
         "assets": [
-          { "name": "dlss5-neural-amd-v0.5.0.zip", "size": 1121878,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.0/dlss5-neural-amd-v0.5.0.zip" },
+          { "name": "dlss5-neural-amd-v0.6.9.zip", "size": 1121878,
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.6.9/dlss5-neural-amd-v0.6.9.zip" },
           { "name": "amd-nr.addon64", "size": 550400,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.0/amd-nr.addon64" },
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.6.9/amd-nr.addon64" },
           { "name": "SHA256SUMS.txt", "size": 181,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.0/SHA256SUMS.txt" }
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.6.9/SHA256SUMS.txt" }
         ]
       },
       {
-        "tag_name": "v0.6.0", "name": "unfinished", "draft": true, "prerelease": false,
+        "tag_name": "v0.8.0", "name": "unfinished", "draft": true, "prerelease": false,
         "published_at": "2026-09-20T00:00:00Z",
         "assets": [
           { "name": "SHA256SUMS.txt", "size": 100,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.6.0/SHA256SUMS.txt" }
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.8.0/SHA256SUMS.txt" }
         ]
       },
       {
@@ -61,11 +61,11 @@ public class ReleasesTests
         ]
       },
       {
-        "tag_name": "v0.5.2", "name": "unpinned", "draft": false, "prerelease": false,
+        "tag_name": "v0.7.2", "name": "unpinned", "draft": false, "prerelease": false,
         "published_at": "2026-09-18T00:00:00Z",
         "assets": [
           { "name": "amd-nr.addon64", "size": 550400,
-            "browser_download_url": "https://github.com/o/r/releases/download/v0.5.2/amd-nr.addon64" }
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.7.2/amd-nr.addon64" }
         ]
       },
       { "tag_name": "media-v1", "name": "media", "draft": false, "prerelease": false, "assets": [] }
@@ -92,18 +92,18 @@ public class ReleasesTests
         var found = AddonReleases.Parse(ReleasesJson);
 
         // Newest first, and by version rather than by the order GitHub listed them in.
-        Assert.Equal(["v0.5.1"], found.Select(f => f.Bare.Tag));
+        Assert.Equal(["v0.7.1"], found.Select(f => f.Bare.Tag));
 
-        // v0.6.0 is a draft, v0.5.2 publishes no SHA256SUMS.txt so nothing pins it, and media-v1
-        // is not a version at all. v0.4.2 and v0.5.0 are both under Earliest -- and v0.5.0 is the
+        // v0.8.0 is a draft, v0.7.2 publishes no SHA256SUMS.txt so nothing pins it, and media-v1
+        // is not a version at all. v0.4.2 and v0.6.9 are both under Earliest -- and v0.6.9 is the
         // one to look at when this list changes again: the runtime is not versioned with the
-        // add-on, so choosing v0.5.0 would install that add-on against the v0.3.0 runtime this
+        // add-on, so choosing v0.6.9 would install that add-on against the v0.4.2 runtime this
         // build pins, and it refuses any runtime but its own. It would install cleanly and then
         // switch itself off, which is worse than not being offered.
         Assert.DoesNotContain(found,
-            f => f.Bare.Tag is "v0.6.0" or "v0.4.2" or "v0.5.0" or "v0.5.2" or "media-v1");
+            f => f.Bare.Tag is "v0.8.0" or "v0.4.2" or "v0.6.9" or "v0.7.2" or "media-v1");
 
-        Assert.EndsWith("/v0.5.1/SHA256SUMS.txt", found[0].SumsUrl);
+        Assert.EndsWith("/v0.7.1/SHA256SUMS.txt", found[0].SumsUrl);
         Assert.Equal(550400ul, found[0].Bare.Assets["amd-nr.addon64"].Size);
     }
 
@@ -139,14 +139,14 @@ public class ReleasesTests
         Assert.Equal(-1, AddonReleases.Preferred([], "0.5.1", null));
     }
 
-    /// <summary>The same thing end to end, from the JSON GitHub answers with: a v0.5.1 that
+    /// <summary>The same thing end to end, from the JSON GitHub answers with: a v0.7.1 that
     /// publishes the four files loose plus its sums is offered to both routes and sorts first, so
     /// it is what Preferred lands on.</summary>
     [Fact]
     public void AReleasePublishingEverythingLooseIsOfferedToBothRoutesAndComesFirst()
     {
         var found = AddonReleases.Parse(ReleasesJson);
-        Assert.Equal("v0.5.1", found[0].Bare.Tag);
+        Assert.Equal("v0.7.1", found[0].Bare.Tag);
 
         var sums = new[] { Work.AddonName, Work.Addon32Name, Work.Host64Name, AddonReleases.BridgeSums }
             .ToDictionary(f => f, _ => Hash('a'), StringComparer.OrdinalIgnoreCase);
@@ -163,8 +163,8 @@ public class ReleasesTests
 
         Assert.True(newest.Covers(Route.X64), "the 64-bit route has to be offered it");
         Assert.True(newest.Covers(Route.X86), "and so does the bridge");
-        Assert.Equal(new Version(0, 5, 1), newest.Version);
-        Assert.Equal(0, AddonReleases.Preferred([newest.Version, new Version(0, 5, 0)], null, null));
+        Assert.Equal(new Version(0, 7, 1), newest.Version);
+        Assert.Equal(0, AddonReleases.Preferred([newest.Version, new Version(0, 6, 9)], null, null));
     }
 
     [Fact]

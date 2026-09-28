@@ -56,8 +56,9 @@ public static class AddonReleases
     /// it, so picking v0.5.0 today would install the v0.5.0 add-on against the v0.3.0 runtime --
     /// and the add-on refuses any runtime but the one its offsets were read out of. The install
     /// would complete and the add-on would then turn itself off with a hash mismatch in the log.
-    /// **Every runtime bump moves this to the first add-on release built against it.**</summary>
-    public static readonly Version Earliest = new(0, 5, 1);
+    /// **Every runtime bump moves this to the first add-on release built against it.** v0.7.0 is the
+    /// first built against DLSS-NR-on-AMD v0.4.3, which every release before it refuses.</summary>
+    public static readonly Version Earliest = new(0, 7, 0);
 
     /// <summary>Which of the offered versions a game opens on, as an index into
     /// <paramref name="offered"/>, newest first. -1 when nothing is offered.
