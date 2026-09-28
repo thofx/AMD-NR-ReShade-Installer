@@ -79,11 +79,15 @@ Neural tab, and lmxxf is picked under NR runtime there.
 
 Some of danielblnc's runtime builds go to his supporters only, 0.5.0 among them. **This app does not
 distribute them, now or later, and neither does this repository or its payload.** Somebody who has
-one supplies it themselves. When the route and version chosen run a build the payload list names
-(`user_runtimes` in `payload/payload.json`), the game's sheet shows **danielblnc runtime**: the
-download, which is the default, or "0.5.0 — supporter build, your own files", with **Choose file…**
+one supplies it themselves. While the payload list names one (`user_runtimes` in
+`payload/payload.json`), the game's sheet has a block of its own under the route, on every ReShade
+route and on OptiScaler where a release runs the build, titled **danielblnc supporter build
+(newer)**: what it brings (a newer runtime than the download; 0.5.0 adds kernels for RDNA3 cards),
+that it is not distributed and you supply your own files, and the button **Use my supporter files…**
 for your `version.dll` or the `dlssnr_on_amd_setup.exe` it came in. The DLL is read out of the setup
-without running it.
+without running it. Under the button the block says which runtime goes in: the download, "Using 0.5.0
+from your file", or why not (no copy on this machine yet, or an add-on or OptiScaler version that does
+not run it, with the version that does); **Use the download instead** goes back.
 
 - The file is checked by SHA-256 against the build the list names. On the ReShade routes, 64-bit and
   the 32-bit bridge, it is then patched in place, each change only over the bytes it expects, and it
@@ -99,10 +103,20 @@ without running it.
   too. On a ReShade route that `version.dll` is his standalone loader, and beside the add-on it would
   be two drivers on one runtime, so the install moves it to the backup, as the OptiScaler route does,
   and uninstall puts it back, with his weights.
-- The choice is remembered per game, and until it is made it follows the folder. An install on the
+- The choice is remembered per game, and until it is made it follows the folder: an install on the
   build stays on it when updated, and is not called out of date for running a runtime other than the
-  download. An add-on version that does not run the build gets the download instead, and the report
-  says so. Until the list carries the build's patch, it is offered on the OptiScaler route only.
+  download. On a game with no choice made and nothing of his in the folder, a build this machine kept a
+  copy of is preselected, and the block says so. An add-on version that does not run the build gets the
+  download instead, and the report says so. Until the list carries the build's patch, it goes in on the
+  OptiScaler route only.
+- danielblnc's standalone runtime is found by its hash under any name in the game folder, not only as
+  `version.dll`. Loaded under another name by a chain loader somebody else put there (NBA 2K27 had a
+  loader as `version.dll` and his 0.3.0 as `dlssnr_ver.dll`), it hooks the same DXGI and D3D12 calls
+  ReShade does, and the two together can keep the game from starting. The ReShade routes then stop in
+  the pre-flight, name the file and what loads it, and touch neither: remove his setup with his own
+  setup or uninstaller, or use the OptiScaler route, which only warns. When that file is a supporter
+  build, it can be picked as your files first. His setup's files with none of his runtime loaded are a
+  warning.
 
 ## How an install is kept undoable
 

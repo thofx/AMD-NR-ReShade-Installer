@@ -118,6 +118,9 @@ public static partial class Work
             ? AcceptedRuntime(build.OriginalSha256, pins.OptiScalerVersion) is not null
             : build.RunsOn(AddonVersionFor(pins, preset));
 
+    /// <summary>The first OptiScaler release that runs a build as it is, or null when none does.</summary>
+    public static Version? OptiScalerSince(string sha) => AcceptedRuntimes.FirstOrDefault(r => r.Sha == sha).Since;
+
     private static string AddonVersionFor(PayloadPins pins, Preset preset) =>
         preset.Route() == Route.X86 ? pins.BridgeVersion : pins.AddonVersion;
 

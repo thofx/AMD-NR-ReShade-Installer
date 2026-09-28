@@ -50,7 +50,8 @@ public sealed class GameEntry
     /// <summary>Which danielblnc runtime this game's install takes: the original SHA-256 of a build the
     /// person supplies (payload.json's user_runtimes), or empty for the download. Null until they pick,
     /// and then it follows the folder, like <see cref="Mochizuki"/>: the build an install put in, or his own
-    /// version.dll, and the download everywhere else. That is what keeps an update on the build.</summary>
+    /// version.dll -- which keeps an update on the build -- or else a build this machine kept a copy of,
+    /// preselected, and the download everywhere else.</summary>
     public string? UserRuntime { get; set; }
 
     [JsonIgnore]

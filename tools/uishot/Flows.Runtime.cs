@@ -1,8 +1,9 @@
-// A runtime build the person supplies, as they meet it: listed in the payload for the add-on version
-// installed, the sheet offers it after the download; picked with no copy on this machine, the check says
-// to supply it; with danielblnc's version.dll in the game that is the copy, kept for other games, and
-// Install puts it in patched and takes version.dll to the backup; the folder is not out of date over it,
-// and picking the download again puts the download back. Run by the flows in Program.cs with the
+// danielblnc's supporter build, as a supporter meets it: once the payload lists one the add-on runs, a
+// titled block under the route says what it is and that it is not distributed, with the button for their
+// own files; chosen with no copy on this machine, it says to supply one; with his version.dll in the game
+// that is the copy, kept, and Install puts it in patched and takes version.dll to the backup; the folder is
+// not out of date over it; "Use the download instead" puts the download back; and on the next game with no
+// choice made, the kept copy is preselected and the block says so. Run by the flows in Program.cs with the
 // ReShade route installed at add-on 1.0.1. The file picker is the one step a headless window cannot take.
 
 using System.Text.Json.Nodes;
@@ -19,51 +20,68 @@ internal static class RuntimeFlow
     {
         string S(string key) => main.FindResource(key) as string ?? key;
         T Named<T>(string name) where T : Control => sheet.FindControl<T>(name)!;
-        var section = Named<StackPanel>("RuntimeSection");
-        var box = Named<ComboBox>("RuntimeBox");
-        var file = Named<Button>("RuntimeFileButton");
+        var section = Named<Border>("RuntimeSection");
+        var use = Named<Button>("RuntimeFileButton");
+        var download = Named<Button>("RuntimeDownloadButton");
         var note = Named<TextBlock>("RuntimeNote");
         var details = Named<ItemsControl>("ReportList");
         var install = Named<Button>("InstallButton");
         var runtime = Path.Combine(game, Work.RuntimeName);
-        var missing = string.Format(S("Str.RuntimeMissing"), "9.9.9");
+        var missing = string.Format(S("Str.SupporterMissing"), "9.9.9");
         bool Says(string text) => details.Items.OfType<ReportLine>().Any(l => l.Text == text);
+        void Picture(string name)
+        {
+            until(() => false, 1);
+            if (section.FindAncestorOfType<ScrollViewer>() is { Content: Visual content } scroll
+                && section.TranslatePoint(new Point(0, 0), content) is { } at)
+                scroll.Offset = new Vector(0, Math.Max(0, at.Y - 120));
+            until(() => false, 1);
+            save(main, name);
+        }
 
-        check(!section.IsVisible, "with no build to supply in the payload list, there is no choice");
+        check(!section.IsVisible, "with no supporter build in the payload list, there is no block");
         var (sha, patched, original) = Seed();
         var reload = main.Session.LoadManifestAsync();
-        check(until(() => reload.IsCompleted && section.IsVisible && box.ItemCount == 2, 10),
-            "a build the add-on runs is offered after the download");
-        check(box.SelectedIndex == 0 && !file.IsVisible && card.Entry.UserRuntime is null, "the download, until picked");
+        check(until(() => reload.IsCompleted && section.IsVisible, 10), "a supporter build in the list shows its block");
+        check(section.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == S("Str.SupporterTitle"))
+              && section.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == S("Str.SupporterNotDistributed")),
+            "titled, and saying it is not distributed");
+        check(use.IsEffectivelyVisible && use.Classes.Contains("primary") && !download.IsVisible
+              && note.Text == S("Str.SupporterUsingDownload") && card.Entry.UserRuntime is null,
+            $"the button for your own files is there, and the download is in use ({note.Text})");
+        Picture("flow-3-supporter-block");
 
-        box.SelectedIndex = 1;
-        check(card.Entry.UserRuntime == sha && file.IsVisible, "picking it is remembered for the game, and offers the file");
-        check(until(() => Says(missing), 10), "with no copy on this machine, the check says to supply it");
-        until(() => false, 1);
-        if (section.FindAncestorOfType<ScrollViewer>() is { Content: Visual content } scroll
-            && section.TranslatePoint(new Point(0, 0), content) is { } at)
-            scroll.Offset = new Vector(0, Math.Max(0, at.Y - 160));
-        until(() => false, 1);
-        save(main, "flow-3-runtime-missing");
+        // Chosen, with no copy on this machine: the block and the check both say to supply one.
+        card.Entry.UserRuntime = sha;
+        sheet.Show(card);
+        check(until(() => note.Text == missing && Says(missing), 10) && download.IsVisible,
+            "chosen with no copy here, it says to supply one, and offers the way back");
 
         // His setup ran in this game: his version.dll is the copy, and the app keeps it.
         File.WriteAllBytes(Path.Combine(game, "version.dll"), original);
-        box.SelectedIndex = 0;
-        box.SelectedIndex = 1;
-        check(until(() => note.Text?.Contains(S("Str.RuntimeKeptNote")) == true && !Says(missing), 10),
-            "danielblnc's version.dll in the game is found and kept");
+        sheet.Show(card);
+        check(until(() => note.Text == string.Format(S("Str.SupporterUsingFile"), "9.9.9") && !Says(missing), 10),
+            $"danielblnc's version.dll in the game is found and kept ({note.Text})");
         click(install);
         check(until(() => !main.Session.Busy, 30) && Engine.HashFile(runtime) == patched
               && !File.Exists(Path.Combine(game, "version.dll")),
             "Install puts the build in patched, and version.dll in the backup");
         check(!card.Outdated, "and the folder is not out of date over the runtime it chose");
 
-        box.SelectedIndex = 0;
-        check(card.Entry.UserRuntime == "", "the download picked again is remembered too");
-        until(() => false, 1);
+        click(download);
+        check(card.Entry.UserRuntime == "" && until(() => note.Text == S("Str.SupporterUsingDownload"), 5),
+            "Use the download instead is remembered, and said");
         click(install);
-        check(until(() => !main.Session.Busy, 30) && Engine.HashFile(runtime) != patched,
-            "and Install puts the download back");
+        check(until(() => !main.Session.Busy, 30) && Engine.HashFile(runtime) != patched, "and Install puts the download back");
+
+        // No choice made, and a copy kept: preselected, and said so.
+        card.Entry.UserRuntime = null;
+        sheet.Show(card);
+        check(until(() => note.Text == string.Format(S("Str.SupporterUsingKept"), "9.9.9"), 10) && download.IsVisible,
+            $"with a kept copy and no choice made, the build is preselected and the block says so ({note.Text})");
+        Picture("flow-3-supporter-kept");
+        click(download);
+        check(card.Entry.UserRuntime == "", "and the download chosen again, for the flows after this one");
     }
 
     /// <summary>A stand-in build listed under user_runtimes, run by add-ons from 1.0.0 on, with one change.</summary>

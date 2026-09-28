@@ -109,7 +109,7 @@ public partial class GameSheet
             var runtime = wanted is null ? null : await Task.Run(() => Work.FindUserRuntime(wanted, TargetFor(card)));
             if (wanted is not null && runtime is null && Offered(wanted))
             {
-                ShowResult(Level.Err, Ui.Format("Str.RuntimeMissing", wanted.Name), "");
+                ShowResult(Level.Err, Ui.Format("Str.SupporterMissing", wanted.Name), "");
                 return;
             }
 
