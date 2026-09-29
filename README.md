@@ -77,7 +77,7 @@ Neural tab, and lmxxf is picked under NR runtime there.
 
 ## danielblnc's supporter builds: your own files
 
-Some of danielblnc's runtime builds go to his supporters only, 0.5.0 among them. **This app does not
+Some of danielblnc's runtime builds go to his supporters only, 0.5.0 and 0.5.1 among them. **This app does not
 distribute them, now or later, and neither does this repository or its payload.** Somebody who has
 one supplies it themselves. While the payload list names one (`user_runtimes` in
 `payload/payload.json`), the game's sheet has a block of its own under the route, on every ReShade

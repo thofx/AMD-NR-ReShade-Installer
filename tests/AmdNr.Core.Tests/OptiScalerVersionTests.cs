@@ -110,9 +110,9 @@ public class OptiScalerVersionTests
     {
         var shipped = PayloadManifest.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "payload.json")));
         var offered = shipped.Offered(PayloadManifest.OptiScalerComponent);
-        // The newest release is offered first, with its own opti-runtime: 0.4.4 and 0.4.3 take danielblnc's public
-        // 0.4.3, which no earlier OptiScaler accepts, so 0.4.2 keeps 0.4.1 and 0.4.1 keeps 0.4.0.
-        Assert.Equal("0.4.4-amd-nr", offered[0].Version);
+        // The newest release is offered first, with its own opti-runtime: 0.4.5, 0.4.4 and 0.4.3 take danielblnc's
+        // public 0.4.3, which no earlier OptiScaler accepts, so 0.4.2 keeps 0.4.1 and 0.4.1 keeps 0.4.0.
+        Assert.Equal("0.4.5-amd-nr", offered[0].Version);
         var newestRuntime = shipped.With(offered[0]).Component(PayloadManifest.OptiRuntimeComponent);
         Assert.Equal("0.4.3", newestRuntime.Version);
         Assert.Equal("d1e320862a8763ac39e7ce194536d4b6c55ba61bae9e8a92753cec32df67a457", newestRuntime.Files.Single().Sha256);
@@ -146,9 +146,12 @@ public class OptiScalerVersionTests
         Assert.Contains("native-game-tiled-assets/block0-ffn.f16", shipped.With(offered[0]).Pins().OptiFiles.Keys);
 
         // The mochizuki runtime rides in 0.4.0 to 0.4.2 as one build, 0.4.3 carries its fix for a
-        // render-resolution change and 0.4.4 the faster build: every file it lists lands under a name the
-        // transaction takes, and its model is the one the runtime was built against.
+        // render-resolution change and 0.4.4 the faster build, which 0.4.5 keeps: every file it lists lands under
+        // a name the transaction takes, and its model is the one the runtime was built against.
         var next = offered[0];
+        var r044 = offered.Single(r => r.Version == "0.4.4-amd-nr");
+        Assert.Equal(r044.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
+            next.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
         Assert.Equal(r040.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
             r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256);
         Assert.NotEqual(r042.Components[PayloadManifest.MochizukiComponent].Files.Single().Sha256,
@@ -216,6 +219,9 @@ public class OptiScalerVersionTests
         Assert.Equal(new Version(0, 4, 1), Work.AcceptedRuntime(r041, "0.4.2-amd-nr"));
         Assert.Null(Work.AcceptedRuntime(r050, "0.4.3-amd-nr"));
         Assert.Equal(new Version(0, 5, 0), Work.AcceptedRuntime(r050, "0.4.4-amd-nr"));
+        const string r051 = "493b4a3b80a21f7255109172ab7bb01ba08d35f2941718f441768f1abfc48acd";
+        Assert.Null(Work.AcceptedRuntime(r051, "0.4.4-amd-nr"));
+        Assert.Equal(new Version(0, 5, 1), Work.AcceptedRuntime(r051, "0.4.5-amd-nr"));
         Assert.Null(Work.AcceptedRuntime(r043, ""));
     }
 

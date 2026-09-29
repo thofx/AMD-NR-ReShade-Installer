@@ -338,28 +338,36 @@ public class UserRuntimeTests
         Assert.True(Fixture.HasAny(report, "no patch for it yet"), report.ToLog("incomplete"));
     }
 
-    /// <summary>The shipped list carries 0.5.0 with its hash and size and nothing else yet: not offered on the
-    /// ReShade routes however new the add-on, offered on OptiScaler 0.4.4, which runs it as it is.</summary>
+    /// <summary>The shipped list carries 0.5.0 and 0.5.1, both offered on OptiScaler 0.4.5, which runs them as they
+    /// are; 0.4.4 runs 0.5.0 only, and 0.4.3 neither.</summary>
     [Fact]
     public void TheShippedListOffers050OnlyWhereNoPatchIsNeeded()
     {
         var shipped = PayloadManifest.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "payload.json")));
-        var build = Assert.Single(shipped.Pins().UserRuntimes);
+        var all = shipped.Pins().UserRuntimes;
+        Assert.Equal(["0.5.0", "0.5.1"], all.Select(b => b.Name));
+        var build = all[0];
         Assert.Equal(("0.5.0", "cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a", 38_703_616UL),
             (build.Name, build.OriginalSha256, build.OriginalSize));
+        Assert.Equal(("493b4a3b80a21f7255109172ab7bb01ba08d35f2941718f441768f1abfc48acd", 38_569_472UL, "0.7.2"),
+            (all[1].OriginalSha256, all[1].OriginalSize, all[1].AddonSince));
         var reshade = new PayloadPins { AddonSha = "", AddonSize = 0, AddonVersion = "9.9.9", UserRuntimes = [build] };
         Assert.Equal(build.Patchable, Work.OfferedRuntimes(reshade, Preset.Dx11).Count == 1);
+        // The bundled add-on, v0.7.2, runs both patched.
+        Assert.Equal(2, Work.OfferedRuntimes(shipped.Pins(), Preset.Dx11).Count);
 
         var opti = shipped.Newest(PayloadManifest.OptiScalerComponent).Pins();
-        Assert.Equal("0.4.4-amd-nr", opti.OptiScalerVersion);
-        Assert.Same(build, Assert.Single(Work.OfferedRuntimes(opti, Preset.OptiScaler)));
+        Assert.Equal("0.4.5-amd-nr", opti.OptiScalerVersion);
+        Assert.Equal(2, Work.OfferedRuntimes(opti, Preset.OptiScaler).Count);
+        Assert.Same(build, Assert.Single(Work.OfferedRuntimes(shipped.With(shipped.Offered(PayloadManifest.OptiScalerComponent)
+            .First(r => r.Version == "0.4.4-amd-nr")).Pins(), Preset.OptiScaler)));
         Assert.Empty(Work.OfferedRuntimes(shipped.With(shipped.Offered(PayloadManifest.OptiScalerComponent)
             .First(r => r.Version == "0.4.3-amd-nr")).Pins(), Preset.OptiScaler));
     }
 
     /// <summary>Against the real setup, when AMDNR_TEST_RUNTIME_SETUP points at one (skipped otherwise: it is
     /// danielblnc's, and a supporter build at that): the build inside is the one the shipped list names, and
-    /// OptiScaler 0.4.4 takes it as its runtime.</summary>
+    /// the first OptiScaler that runs it takes it as its runtime.</summary>
     [Fact]
     public void ARealSetupGivesUpTheBuildTheListNames()
     {
@@ -378,7 +386,8 @@ public class UserRuntimeTests
         {
             AddonSha = pins.AddonSha, AddonSize = pins.AddonSize, WeightsSha = pins.WeightsSha, WeightsSize = pins.WeightsSize,
             OptiFiles = pins.OptiFiles, OptiRuntimeName = pins.OptiRuntimeName, OptiRuntimeSha = pins.OptiRuntimeSha,
-            OptiRuntimeSize = pins.OptiRuntimeSize, OptiScalerVersion = "0.4.4-amd-nr", OptiRuntimeVersion = "0.4.2",
+            OptiRuntimeSize = pins.OptiRuntimeSize, OptiScalerVersion = $"{Work.OptiScalerSince(build.OriginalSha256)}-amd-nr",
+            OptiRuntimeVersion = "0.4.2",
             UserRuntimes = shipped.Pins().UserRuntimes,
         };
         var report = Work.Install(game, src, Preset.OptiScaler, pins, ownRuntime: setup);

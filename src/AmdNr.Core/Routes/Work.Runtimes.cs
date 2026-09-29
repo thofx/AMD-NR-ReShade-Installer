@@ -9,7 +9,7 @@ namespace AmdNr.Core;
 public static partial class Work
 {
     /// <summary>The runtime builds this project has seen, by the start of their SHA-256: danielblnc's
-    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1, 0.4.2 and 0.4.3, the 0.5.0 he gives his supporters, and
+    /// 0.2.14, 0.2.17, 0.3.0, 0.3.1, 0.3.3, 0.4.0, 0.4.1, 0.4.2 and 0.4.3, the 0.5.0 and 0.5.1 he gives his supporters, and
     /// the 0.3.0, 0.4.0 and 0.4.1 the add-on pins. Any of them sitting in the game folder as version.dll is the
     /// author's own way of loading the runtime.</summary>
     private static readonly string[] KnownRuntimePrefixes =
@@ -18,7 +18,7 @@ public static partial class Work
         "8321cae728d28cb7", "70af3fb757f83f71", "b108d6407eb7f094",
         "907b30a61644a6d7", "d62be3d8b9fbb3c6", "ff6feffa41abccce",
         "823063eb4c76b133", "c8808716c286a34f", "8aa2dcc5b6596aca", "d1e320862a8763ac",
-        "cddfb09e01934795",
+        "cddfb09e01934795", "493b4a3b80a21f72",
     ];
 
     /// <summary>The name the author's setup loads the runtime under.</summary>
@@ -41,6 +41,7 @@ public static partial class Work
         ("8aa2dcc5b6596aca97995dbfd4e0a9790d8c15108495e0ed154dd15dbb5b465a", new(0, 4, 2), new(0, 4, 3)),
         ("d1e320862a8763ac39e7ce194536d4b6c55ba61bae9e8a92753cec32df67a457", new(0, 4, 3), new(0, 4, 3)),
         ("cddfb09e019347957bf7b96c95c0e900e8d3062dfaed697a8a96b0a039aec31a", new(0, 5, 0), new(0, 4, 4)),
+        ("493b4a3b80a21f7255109172ab7bb01ba08d35f2941718f441768f1abfc48acd", new(0, 5, 1), new(0, 4, 5)),
     ];
 
     /// <summary>"0.4.3-amd-nr" or "0.4.2" as a version, or null.</summary>
